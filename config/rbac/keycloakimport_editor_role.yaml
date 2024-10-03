@@ -1,0 +1,27 @@
+# permissions for end users to edit keycloakimports.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: rhbk-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: keycloakimport-editor-role
+rules:
+- apiGroups:
+  - sso.stakater.com
+  resources:
+  - keycloakimports
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - sso.stakater.com
+  resources:
+  - keycloakimports/status
+  verbs:
+  - get

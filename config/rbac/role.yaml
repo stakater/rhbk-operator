@@ -1,0 +1,58 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - sso.stakater.com
+  resources:
+  - keycloakimports
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - sso.stakater.com
+  resources:
+  - keycloakimports/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - sso.stakater.com
+  resources:
+  - keycloakimports/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - sso.stakater.com
+  resources:
+  - keycloaks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - sso.stakater.com
+  resources:
+  - keycloaks/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - sso.stakater.com
+  resources:
+  - keycloaks/status
+  verbs:
+  - get
+  - patch
+  - update

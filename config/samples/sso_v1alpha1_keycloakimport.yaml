@@ -1,0 +1,9 @@
+apiVersion: sso.stakater.com/v1alpha1
+kind: KeycloakImport
+metadata:
+  labels:
+    app.kubernetes.io/name: rhbk-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: keycloakimport-sample
+spec:
+  # TODO(user): Add fields here
