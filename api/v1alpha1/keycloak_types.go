@@ -17,19 +17,47 @@ limitations under the License.
 package v1alpha1
 
 import (
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // KeycloakSpec defines the desired state of Keycloak
 type KeycloakSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Database          *PostgresDatabase `json:"database"`
+	AdditionalOptions []SecretOption    `json:"additionalOptions,omitempty"`
+	Features          *Features         `json:"features,omitempty"`
+	Instances         *int32            `json:"instances"`
+	Truststore        []Truststore      `json:"truststore,omitempty"`
+	Admin             AdminUser         `json:"admin,omitempty"`
+}
 
-	// Foo is an example field of Keycloak. Edit keycloak_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+type AdminUser struct {
+	Username SecretOption `json:"username,omitempty"`
+	Password SecretOption `json:"password,omitempty"`
+}
+
+type Truststore struct {
+	File     SecretOption          `json:"file,omitempty"`
+	Password *v1.SecretKeySelector `json:"password,omitempty"`
+}
+
+type Features struct {
+	Enabled  []string `json:"enabled,omitempty"`
+	Disabled []string `json:"disabled,omitempty"`
+}
+
+type PostgresDatabase struct {
+	Name     SecretOption `json:"name,omitempty"`
+	Host     SecretOption `json:"host,omitempty"`
+	Port     SecretOption `json:"port,omitempty"`
+	Username SecretOption `json:"username,omitempty"`
+	Password SecretOption `json:"password,omitempty"`
+}
+
+type SecretOption struct {
+	Name   string                `json:"name"`
+	Value  string                `json:"value,omitempty"`
+	Secret *v1.SecretKeySelector `json:"secret,omitempty"`
 }
 
 // KeycloakStatus defines the observed state of Keycloak

@@ -19,6 +19,7 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	route "github.com/openshift/api/route/v1"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -46,7 +47,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
+	utilruntime.Must(route.AddToScheme(scheme))
 	utilruntime.Must(ssov1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
