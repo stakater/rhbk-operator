@@ -8,7 +8,6 @@ import (
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
 	v1 "k8s.io/api/apps/v1"
 	v12 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -18,7 +17,7 @@ import (
 	"strconv"
 )
 
-const IMAGE = "registry.redhat.io/rhbk/keycloak-rhel9"
+const IMAGE = "registry.redhat.io/rhbk/keycloak-rhel9:24-17"
 const DISCOVERY_SERVICE_NAME = ""
 const ANNOTATION_HASH = "rhbk.stakater.com/hash"
 
@@ -40,7 +39,7 @@ func (ks *RHBKStatefulSet) Build() error {
 
 	ks.Resource = &v1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ks.Keycloak.Name,
+			Name:      GetStatefulSetName(ks.Keycloak),
 			Namespace: ks.Keycloak.Namespace,
 			Labels:    labels,
 			Annotations: map[string]string{
@@ -102,11 +101,11 @@ func (ks *RHBKStatefulSet) Build() error {
 								},
 								{
 									Name:  "KC_HTTP_PORT",
-									Value: strconv.FormatInt(HttpPort, 32),
+									Value: strconv.FormatInt(HttpPort, 10),
 								},
 								{
 									Name:  "KC_HTTPS_PORT",
-									Value: strconv.FormatInt(HttpsPort, 32),
+									Value: strconv.FormatInt(HttpsPort, 10),
 								},
 								{
 									Name:  "KC_HTTPS_CERTIFICATE_FILE",
@@ -123,7 +122,7 @@ func (ks *RHBKStatefulSet) Build() error {
 								{
 									Name: "KC_DB_USERNAME",
 									ValueFrom: &v12.EnvVarSource{
-										SecretKeyRef: ks.Keycloak.Spec.Database.Username.Secret,
+										SecretKeyRef: ks.Keycloak.Spec.Database.User.Secret,
 									},
 								},
 								{
@@ -179,7 +178,7 @@ func (ks *RHBKStatefulSet) Build() error {
 									},
 								},
 								{
-									Name: "KEYCLOAK_ADMIN",
+									Name: "KEYCLOAK_ADMIN_PASSWORD",
 									ValueFrom: &v12.EnvVarSource{
 										SecretKeyRef: ks.Keycloak.Spec.Admin.Password.Secret,
 									},
@@ -243,7 +242,7 @@ func (ks *RHBKStatefulSet) Build() error {
 							Name: "keycloak-tls-certificates",
 							VolumeSource: v12.VolumeSource{
 								Secret: &v12.SecretVolumeSource{
-									SecretName:  RHBKTlsSecretName,
+									SecretName:  GetTLSSecretName(ks.Keycloak),
 									DefaultMode: &[]int32{420}[0],
 									Optional:    &[]bool{false}[0],
 								},
@@ -264,30 +263,14 @@ func (ks *RHBKStatefulSet) Build() error {
 }
 
 func (ks *RHBKStatefulSet) CreateOrUpdate(ctx context.Context, c client.Client) error {
-	err := c.Get(ctx, client.ObjectKey{
-		Namespace: GetStatefulSetName(ks.Keycloak),
-		Name:      ks.Keycloak.Namespace,
-	}, ks.Resource)
+	err := ks.Build()
 
-	if err != nil {
-		if errors.IsNotFound(err) {
-			err = ks.Build()
-			if err != nil {
-				return err
-			}
-
-			return c.Create(ctx, ks.Resource)
-		}
-
-		return err
-	}
-
-	err = ks.Build()
 	if err != nil {
 		return err
 	}
 
-	return c.Update(ctx, ks.Resource)
+	_, err = controllerutil.CreateOrUpdate(ctx, c, ks.Resource, func() error { return nil })
+	return err
 }
 
 func computeHash(cr *v1alpha1.Keycloak) string {

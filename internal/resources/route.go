@@ -4,11 +4,11 @@ import (
 	"context"
 	v1 "github.com/openshift/api/route/v1"
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 type RHBKRoute struct {
@@ -24,10 +24,6 @@ func (s *RHBKRoute) Build() error {
 			Namespace: s.Keycloak.Namespace,
 			Labels: map[string]string{
 				"app": "rhbk",
-			},
-			Annotations: map[string]string{
-				"route.openshift.io/destination-ca-certificate-secret": RHBKTlsSecretName,
-				"route.openshift.io/termination":                       "reencrypt",
 			},
 		},
 		Spec: v1.RouteSpec{
@@ -45,33 +41,22 @@ func (s *RHBKRoute) Build() error {
 		},
 	}
 
+	err := controllerutil.SetOwnerReference(s.Keycloak, s.Resource, s.Scheme)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (s *RHBKRoute) CreateOrUpdate(ctx context.Context, c client.Client) error {
-	existing := &v1.Route{}
-	err := c.Get(ctx, client.ObjectKey{
-		Namespace: GetSvcName(s.Keycloak),
-		Name:      s.Keycloak.Namespace,
-	}, existing)
-
-	if err != nil {
-		if errors.IsNotFound(err) {
-			err = s.Build()
-			if err != nil {
-				return err
-			}
-
-			return c.Create(ctx, s.Resource)
-		}
-
-		return err
-	}
-
-	err = s.Build()
+	err := s.Build()
 	if err != nil {
 		return err
 	}
+	_, err = controllerutil.CreateOrUpdate(ctx, c, s.Resource, func() error {
+		return nil
+	})
 
-	return c.Update(ctx, s.Resource)
+	return err
 }

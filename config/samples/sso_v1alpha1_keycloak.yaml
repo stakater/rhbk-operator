@@ -6,4 +6,34 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: keycloak-sample
 spec:
-  # TODO(user): Add fields here
+  instances: 1
+  admin:
+    username:
+      secret:
+        name: admin
+        key: username
+    password:
+      secret:
+        name: admin
+        key: password
+  database:
+    name:
+      secret:
+        name: plankton-cluster-pguser-rhsso
+        key: dbname
+    host:
+      secret:
+        name: plankton-cluster-pguser-rhsso
+        key: host
+    port:
+      secret:
+        name: plankton-cluster-pguser-rhsso
+        key: port
+    user:
+      secret:
+        name: plankton-cluster-pguser-rhsso
+        key: user
+    password:
+      secret:
+        name: plankton-cluster-pguser-rhsso
+        key: password

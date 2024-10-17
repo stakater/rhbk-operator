@@ -80,8 +80,6 @@ spec:
                 properties:
                   password:
                     properties:
-                      name:
-                        type: string
                       secret:
                         description: SecretKeySelector selects a key of a Secret.
                         properties:
@@ -110,13 +108,9 @@ spec:
                         x-kubernetes-map-type: atomic
                       value:
                         type: string
-                    required:
-                    - name
                     type: object
                   username:
                     properties:
-                      name:
-                        type: string
                       secret:
                         description: SecretKeySelector selects a key of a Secret.
                         properties:
@@ -145,16 +139,12 @@ spec:
                         x-kubernetes-map-type: atomic
                       value:
                         type: string
-                    required:
-                    - name
                     type: object
                 type: object
               database:
                 properties:
                   host:
                     properties:
-                      name:
-                        type: string
                       secret:
                         description: SecretKeySelector selects a key of a Secret.
                         properties:
@@ -183,13 +173,9 @@ spec:
                         x-kubernetes-map-type: atomic
                       value:
                         type: string
-                    required:
-                    - name
                     type: object
                   name:
                     properties:
-                      name:
-                        type: string
                       secret:
                         description: SecretKeySelector selects a key of a Secret.
                         properties:
@@ -218,13 +204,9 @@ spec:
                         x-kubernetes-map-type: atomic
                       value:
                         type: string
-                    required:
-                    - name
                     type: object
                   password:
                     properties:
-                      name:
-                        type: string
                       secret:
                         description: SecretKeySelector selects a key of a Secret.
                         properties:
@@ -253,13 +235,9 @@ spec:
                         x-kubernetes-map-type: atomic
                       value:
                         type: string
-                    required:
-                    - name
                     type: object
                   port:
                     properties:
-                      name:
-                        type: string
                       secret:
                         description: SecretKeySelector selects a key of a Secret.
                         properties:
@@ -288,13 +266,9 @@ spec:
                         x-kubernetes-map-type: atomic
                       value:
                         type: string
-                    required:
-                    - name
                     type: object
-                  username:
+                  user:
                     properties:
-                      name:
-                        type: string
                       secret:
                         description: SecretKeySelector selects a key of a Secret.
                         properties:
@@ -323,9 +297,13 @@ spec:
                         x-kubernetes-map-type: atomic
                       value:
                         type: string
-                    required:
-                    - name
                     type: object
+                required:
+                - host
+                - name
+                - password
+                - port
+                - user
                 type: object
               features:
                 properties:
@@ -346,8 +324,6 @@ spec:
                   properties:
                     file:
                       properties:
-                        name:
-                          type: string
                         secret:
                           description: SecretKeySelector selects a key of a Secret.
                           properties:
@@ -376,8 +352,6 @@ spec:
                           x-kubernetes-map-type: atomic
                         value:
                           type: string
-                      required:
-                      - name
                       type: object
                     password:
                       description: SecretKeySelector selects a key of a Secret.

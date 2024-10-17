@@ -41,10 +41,20 @@ type KeycloakReconciler struct {
 //+kubebuilder:rbac:groups=route.openshift.io,resources=Route,verbs=get;list;watch;create;update;patch;delete
 
 func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx).WithName("keycloak-controller")
+	logger := log.FromContext(ctx).WithName("keycloak-controller")
 
 	cr := &ssov1alpha1.Keycloak{}
 	if err := r.Get(ctx, req.NamespacedName, cr); client.IgnoreNotFound(err) != nil {
+		return ctrl.Result{}, err
+	}
+
+	serviceResource := resources.RHBKService{
+		Keycloak: cr,
+		Scheme:   r.Scheme,
+	}
+	err := serviceResource.CreateOrUpdate(ctx, r.Client)
+	if err != nil {
+		logger.Error(err, "error CU service")
 		return ctrl.Result{}, err
 	}
 
@@ -53,17 +63,9 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		Scheme:   r.Scheme,
 	}
 
-	err := routeResource.CreateOrUpdate(ctx, r.Client)
+	err = routeResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	serviceResource := resources.RHBKService{
-		Keycloak: cr,
-		Scheme:   r.Scheme,
-	}
-	err = serviceResource.CreateOrUpdate(ctx, r.Client)
-	if err != nil {
+		logger.Error(err, "error CU route")
 		return ctrl.Result{}, err
 	}
 
@@ -73,6 +75,7 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	err = discoveryServiceResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
+		logger.Error(err, "error CU discovery service")
 		return ctrl.Result{}, err
 	}
 
@@ -83,6 +86,7 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	err = statefulSetResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
+		logger.Error(err, "error CU stateful set")
 		return ctrl.Result{}, err
 	}
 

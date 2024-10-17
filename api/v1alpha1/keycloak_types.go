@@ -24,7 +24,7 @@ import (
 // KeycloakSpec defines the desired state of Keycloak
 type KeycloakSpec struct {
 	Database          *PostgresDatabase `json:"database"`
-	AdditionalOptions []SecretOption    `json:"additionalOptions,omitempty"`
+	AdditionalOptions []SecretOptionVar `json:"additionalOptions,omitempty"`
 	Features          *Features         `json:"features,omitempty"`
 	Instances         *int32            `json:"instances"`
 	Truststore        []Truststore      `json:"truststore,omitempty"`
@@ -47,15 +47,20 @@ type Features struct {
 }
 
 type PostgresDatabase struct {
-	Name     SecretOption `json:"name,omitempty"`
-	Host     SecretOption `json:"host,omitempty"`
-	Port     SecretOption `json:"port,omitempty"`
-	Username SecretOption `json:"username,omitempty"`
-	Password SecretOption `json:"password,omitempty"`
+	Name     SecretOption `json:"name"`
+	Host     SecretOption `json:"host"`
+	Port     SecretOption `json:"port"`
+	User     SecretOption `json:"user"`
+	Password SecretOption `json:"password"`
+}
+
+type SecretOptionVar struct {
+	Name   string                `json:"name"`
+	Value  string                `json:"value,omitempty"`
+	Secret *v1.SecretKeySelector `json:"secret,omitempty"`
 }
 
 type SecretOption struct {
-	Name   string                `json:"name"`
 	Value  string                `json:"value,omitempty"`
 	Secret *v1.SecretKeySelector `json:"secret,omitempty"`
 }
