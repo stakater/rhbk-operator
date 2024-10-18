@@ -387,6 +387,13 @@ spec:
             type: object
           status:
             description: KeycloakStatus defines the observed state of Keycloak
+            properties:
+              resourceVersions:
+                additionalProperties:
+                  type: string
+                type: object
+            required:
+            - resourceVersions
             type: object
         type: object
     served: true

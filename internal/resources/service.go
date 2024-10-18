@@ -29,43 +29,38 @@ func GetSvcName(cr *v1alpha1.Keycloak) string {
 }
 
 func (s *RHBKService) Build() error {
-	s.Resource = &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      GetSvcName(s.Keycloak),
-			Namespace: s.Keycloak.Namespace,
-			Labels: map[string]string{
-				"app": "rhbk",
+	s.Resource.Labels = map[string]string{
+		"app": "rhbk",
+	}
+	s.Resource.Annotations = map[string]string{
+		"service.beta.openshift.io/serving-cert-secret-name": GetTLSSecretName(s.Keycloak),
+	}
+
+	s.Resource.Spec = v1.ServiceSpec{
+		Ports: []v1.ServicePort{
+			{
+				Name:     "http",
+				Protocol: v1.ProtocolTCP,
+				Port:     HttpPort,
+				TargetPort: intstr.IntOrString{
+					IntVal: HttpPort,
+				},
 			},
-			Annotations: map[string]string{
-				"service.beta.openshift.io/serving-cert-secret-name": GetTLSSecretName(s.Keycloak),
+			{
+				Name:     "https",
+				Protocol: v1.ProtocolTCP,
+				Port:     HttpsPort,
+				TargetPort: intstr.IntOrString{
+					IntVal: HttpsPort,
+				},
 			},
 		},
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{
-				{
-					Name:     "http",
-					Protocol: v1.ProtocolTCP,
-					Port:     HttpPort,
-					TargetPort: intstr.IntOrString{
-						IntVal: HttpPort,
-					},
-				},
-				{
-					Name:     "https",
-					Protocol: v1.ProtocolTCP,
-					Port:     HttpsPort,
-					TargetPort: intstr.IntOrString{
-						IntVal: HttpsPort,
-					},
-				},
-			},
-			Selector: map[string]string{
-				"app": "rhbk",
-			},
+		Selector: map[string]string{
+			"app": "rhbk",
 		},
 	}
 
-	err := controllerutil.SetOwnerReference(s.Keycloak, s.Resource, s.Scheme)
+	err := controllerutil.SetControllerReference(s.Keycloak, s.Resource, s.Scheme)
 	if err != nil {
 		return err
 	}
@@ -74,12 +69,13 @@ func (s *RHBKService) Build() error {
 }
 
 func (s *RHBKService) CreateOrUpdate(ctx context.Context, c client.Client) error {
-	err := s.Build()
-
-	if err != nil {
-		return err
+	s.Resource = &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      GetSvcName(s.Keycloak),
+			Namespace: s.Keycloak.Namespace,
+		},
 	}
 
-	_, err = controllerutil.CreateOrUpdate(ctx, c, s.Resource, func() error { return nil })
+	_, err := controllerutil.CreateOrUpdate(ctx, c, s.Resource, s.Build)
 	return err
 }

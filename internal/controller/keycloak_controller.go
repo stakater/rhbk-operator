@@ -18,16 +18,20 @@ package controller
 
 import (
 	"context"
+	v12 "github.com/openshift/api/route/v1"
+	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
 	"github.com/stakater/rhbk-operator/internal/resources"
+	v13 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-// KeycloakReconciler reconciles a Keycloak object
 type KeycloakReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -42,9 +46,14 @@ type KeycloakReconciler struct {
 
 func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).WithName("keycloak-controller")
+	logger.Info("reconciling...")
 
 	cr := &ssov1alpha1.Keycloak{}
-	if err := r.Get(ctx, req.NamespacedName, cr); client.IgnoreNotFound(err) != nil {
+	err := r.Get(ctx, req.NamespacedName, cr)
+
+	if errors.IsNotFound(err) {
+		return ctrl.Result{}, nil
+	} else if client.IgnoreNotFound(err) != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -52,9 +61,8 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		Keycloak: cr,
 		Scheme:   r.Scheme,
 	}
-	err := serviceResource.CreateOrUpdate(ctx, r.Client)
+	err = serviceResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		logger.Error(err, "error CU service")
 		return ctrl.Result{}, err
 	}
 
@@ -65,7 +73,6 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	err = routeResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		logger.Error(err, "error CU route")
 		return ctrl.Result{}, err
 	}
 
@@ -75,7 +82,6 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	err = discoveryServiceResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		logger.Error(err, "error CU discovery service")
 		return ctrl.Result{}, err
 	}
 
@@ -86,16 +92,18 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	err = statefulSetResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		logger.Error(err, "error CU stateful set")
-		return ctrl.Result{}, err
+		return ctrl.Result{Requeue: true}, nil
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{}, r.Status().Update(ctx, cr)
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *KeycloakReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ssov1alpha1.Keycloak{}).
+		Owns(&v1.Service{}).
+		Owns(&v12.Route{}).
+		Owns(&v13.StatefulSet{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }

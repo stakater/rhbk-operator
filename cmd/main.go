@@ -21,7 +21,6 @@ import (
 	"flag"
 	route "github.com/openshift/api/route/v1"
 	"os"
-
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -117,6 +116,23 @@ func main() {
 		// if you are doing or is intended to do any operation such as perform cleanups
 		// after the manager stops then its usage might be unsafe.
 		// LeaderElectionReleaseOnCancel: true,
+		//NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
+		//	watchEnabledLabel := labels.Set{}
+		//	watchEnabledLabel[constants.RHBKAppLabel] = strconv.FormatBool(true)
+		//	opts.ByObject = map[client.Object]cache.ByObject{
+		//		&v1.StatefulSet{}: {
+		//			Label: labels.SelectorFromSet(watchEnabledLabel),
+		//		},
+		//		&v12.Service{}: {
+		//			Label: labels.SelectorFromSet(watchEnabledLabel),
+		//		},
+		//		&route.Route{}: {
+		//			Label: labels.SelectorFromSet(watchEnabledLabel),
+		//		},
+		//	}
+		//
+		//	return cache.New(config, opts)
+		//},
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

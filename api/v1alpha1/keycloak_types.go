@@ -67,8 +67,15 @@ type SecretOption struct {
 
 // KeycloakStatus defines the observed state of Keycloak
 type KeycloakStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	ResourceVersions map[string]string `json:"resourceVersions"`
+}
+
+func (s *KeycloakStatus) UpdateVersion(resource string, version string) {
+	if s.ResourceVersions == nil {
+		s.ResourceVersions = make(map[string]string)
+	}
+
+	s.ResourceVersions[resource] = version
 }
 
 //+kubebuilder:object:root=true

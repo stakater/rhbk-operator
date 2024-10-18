@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: keycloak-sample
 spec:
-  instances: 1
+  instances: 3
   admin:
     username:
       secret:
@@ -19,21 +19,21 @@ spec:
   database:
     name:
       secret:
-        name: plankton-cluster-pguser-rhsso
+        name: plankton-cluster-pguser-rhbk
         key: dbname
     host:
       secret:
-        name: plankton-cluster-pguser-rhsso
+        name: plankton-cluster-pguser-rhbk
         key: host
     port:
       secret:
-        name: plankton-cluster-pguser-rhsso
+        name: plankton-cluster-pguser-rhbk
         key: port
     user:
       secret:
-        name: plankton-cluster-pguser-rhsso
+        name: plankton-cluster-pguser-rhbk
         key: user
     password:
       secret:
-        name: plankton-cluster-pguser-rhsso
+        name: plankton-cluster-pguser-rhbk
         key: password

@@ -3,12 +3,14 @@ package resources
 import (
 	"context"
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
+	"github.com/stakater/rhbk-operator/internal/constants"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"strconv"
 )
 
 type RHBKDiscoveryService struct {
@@ -24,34 +26,30 @@ func GetDiscoverySvcName(cr *v1alpha1.Keycloak) string {
 }
 
 func (s *RHBKDiscoveryService) Build() error {
-	s.Resource = &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      GetDiscoverySvcName(s.Keycloak),
-			Namespace: s.Keycloak.Namespace,
-			Labels: map[string]string{
-				"app": "rhbk",
-			},
-		},
-		Spec: v1.ServiceSpec{
-			ClusterIP:                "None",
-			PublishNotReadyAddresses: true,
-			Ports: []v1.ServicePort{
-				{
-					Name:     "http",
-					Protocol: v1.ProtocolTCP,
-					Port:     DiscoveryPort,
-					TargetPort: intstr.IntOrString{
-						IntVal: DiscoveryPort,
-					},
+	s.Resource.Labels = map[string]string{
+		"app":                  "rhbk",
+		constants.RHBKAppLabel: strconv.FormatBool(true),
+	}
+
+	s.Resource.Spec = v1.ServiceSpec{
+		ClusterIP:                "None",
+		PublishNotReadyAddresses: true,
+		Ports: []v1.ServicePort{
+			{
+				Name:     "http",
+				Protocol: v1.ProtocolTCP,
+				Port:     DiscoveryPort,
+				TargetPort: intstr.IntOrString{
+					IntVal: DiscoveryPort,
 				},
 			},
-			Selector: map[string]string{
-				"app": "rhbk",
-			},
+		},
+		Selector: map[string]string{
+			"app": "rhbk",
 		},
 	}
 
-	err := controllerutil.SetOwnerReference(s.Keycloak, s.Resource, s.Scheme)
+	err := controllerutil.SetControllerReference(s.Keycloak, s.Resource, s.Scheme)
 	if err != nil {
 		return err
 	}
@@ -60,12 +58,12 @@ func (s *RHBKDiscoveryService) Build() error {
 }
 
 func (s *RHBKDiscoveryService) CreateOrUpdate(ctx context.Context, c client.Client) error {
-	err := s.Build()
-
-	if err != nil {
-		return err
+	s.Resource = &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      GetDiscoverySvcName(s.Keycloak),
+			Namespace: s.Keycloak.Namespace,
+		},
 	}
-
-	_, err = controllerutil.CreateOrUpdate(ctx, c, s.Resource, func() error { return nil })
+	_, err := controllerutil.CreateOrUpdate(ctx, c, s.Resource, s.Build)
 	return err
 }
