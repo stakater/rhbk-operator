@@ -29,6 +29,12 @@ type KeycloakSpec struct {
 	Instances         *int32            `json:"instances"`
 	Truststore        []Truststore      `json:"truststore,omitempty"`
 	Admin             AdminUser         `json:"admin,omitempty"`
+	Providers         []Provider        `json:"providers,omitempty"`
+}
+
+type Provider struct {
+	Name string       `json:"name"`
+	URL  SecretOption `json:"url"`
 }
 
 type AdminUser struct {

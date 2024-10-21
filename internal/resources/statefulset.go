@@ -16,7 +16,7 @@ import (
 	"strconv"
 )
 
-const IMAGE = "registry.redhat.io/rhbk/keycloak-rhel9:24-17"
+const RHBKImage = "registry.redhat.io/rhbk/keycloak-rhel9:24-17"
 
 type RHBKStatefulSet struct {
 	Keycloak *v1alpha1.Keycloak
@@ -61,7 +61,7 @@ func (ks *RHBKStatefulSet) Build() error {
 				Containers: []v12.Container{
 					{
 						Name:            "rhbk",
-						Image:           IMAGE,
+						Image:           RHBKImage,
 						ImagePullPolicy: v12.PullAlways,
 						Args: []string{
 							fmt.Sprintf("-Djgroups.dns.query=%s.%s", GetDiscoverySvcName(ks.Keycloak), ks.Keycloak.Namespace),
@@ -224,9 +224,14 @@ func (ks *RHBKStatefulSet) Build() error {
 								Name:      "keycloak-tls-certificates",
 								MountPath: "/mnt/certificates",
 							},
+							{
+								Name:      "providers",
+								MountPath: ProvidersPATH,
+							},
 						},
 					},
 				},
+				InitContainers: GetInitContainer(ks.Keycloak),
 				Volumes: []v12.Volume{
 					{
 						Name: "keycloak-tls-certificates",
@@ -236,6 +241,12 @@ func (ks *RHBKStatefulSet) Build() error {
 								DefaultMode: &[]int32{420}[0],
 								Optional:    &[]bool{false}[0],
 							},
+						},
+					},
+					{
+						Name: "providers",
+						VolumeSource: v12.VolumeSource{
+							EmptyDir: &v12.EmptyDirVolumeSource{},
 						},
 					},
 				},

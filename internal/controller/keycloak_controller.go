@@ -63,7 +63,7 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	err = serviceResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	routeResource := resources.RHBKRoute{
@@ -73,7 +73,7 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	err = routeResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	discoveryServiceResource := resources.RHBKDiscoveryService{
@@ -82,7 +82,7 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	err = discoveryServiceResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	statefulSetResource := &resources.RHBKStatefulSet{
@@ -102,8 +102,8 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 func (r *KeycloakReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ssov1alpha1.Keycloak{}).
-		Owns(&v1.Service{}).
-		Owns(&v12.Route{}).
+		Owns(&v1.Service{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Owns(&v12.Route{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&v13.StatefulSet{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }
