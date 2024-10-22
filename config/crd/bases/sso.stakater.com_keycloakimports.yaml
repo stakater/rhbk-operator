@@ -39,10 +39,64 @@ spec:
           spec:
             description: KeycloakImportSpec defines the desired state of KeycloakImport
             properties:
-              foo:
-                description: Foo is an example field of KeycloakImport. Edit keycloakimport_types.go
-                  to remove/update
+              json:
+                description: Exported Realm JSON
                 type: string
+              keycloakInstance:
+                description: Keycloak instance to import the realm
+                properties:
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+                required:
+                - name
+                - namespace
+                type: object
+              overrideIfExists:
+                description: Override if realm already exists
+                type: boolean
+              substitutions:
+                description: Realm variable replacement with format ${VAR_NAME}
+                items:
+                  properties:
+                    name:
+                      type: string
+                    secret:
+                      description: SecretKeySelector selects a key of a Secret.
+                      properties:
+                        key:
+                          description: The key of the secret to select from.  Must
+                            be a valid secret key.
+                          type: string
+                        name:
+                          default: ""
+                          description: |-
+                            Name of the referent.
+                            This field is effectively required, but due to backwards compatibility is
+                            allowed to be empty. Instances of this type with an empty value here are
+                            almost certainly wrong.
+                            TODO: Add other useful fields. apiVersion, kind, uid?
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                          type: string
+                        optional:
+                          description: Specify whether the Secret or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    value:
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
+            required:
+            - json
+            - keycloakInstance
             type: object
           status:
             description: KeycloakImportStatus defines the observed state of KeycloakImport

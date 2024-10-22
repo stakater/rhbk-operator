@@ -4,6 +4,18 @@ metadata:
   labels:
     app.kubernetes.io/name: rhbk-operator
     app.kubernetes.io/managed-by: kustomize
-  name: keycloakimport-sample
+  name: realm-import-sample
 spec:
-  # TODO(user): Add fields here
+  keycloakInstance:
+    name: keycloak-sample
+    namespace: rhsso
+  substitutions:
+    - name: DISPLAY_NAME
+      secret:
+        name: test-realm-secret
+        key: displayName
+  json: |
+    {
+      "realm": "test-realm",
+      "displayName": "${DISPLAY_NAME}"
+    }

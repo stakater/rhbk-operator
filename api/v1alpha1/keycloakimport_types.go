@@ -25,11 +25,22 @@ import (
 
 // KeycloakImportSpec defines the desired state of KeycloakImport
 type KeycloakImportSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Keycloak instance to import the realm
+	KeycloakInstance KeycloakInstance `json:"keycloakInstance"`
 
-	// Foo is an example field of KeycloakImport. Edit keycloakimport_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Exported Realm JSON
+	JSON string `json:"json"`
+
+	// Realm variable replacement with format ${VAR_NAME}
+	Substitutions []SecretOptionVar `json:"substitutions,omitempty"`
+
+	// Override if realm already exists
+	OverrideIfExists bool `json:"overrideIfExists,omitempty"`
+}
+
+type KeycloakInstance struct {
+	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
 }
 
 // KeycloakImportStatus defines the observed state of KeycloakImport

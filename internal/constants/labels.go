@@ -1,4 +1,5 @@
 package constants
 
 const RHBKAppLabel = "sso.stakater.com/enabled"
-const RHBKAppManagedVersion = "sso.stakater.com/version"
+const RHBKEnabledRealmPrefix = "realm.stakater.com/"
+const RHBKRealmImportLabel = "realm.stakater.com/import"

@@ -4,6 +4,7 @@ metadata:
   labels:
     app.kubernetes.io/name: rhbk-operator
     app.kubernetes.io/managed-by: kustomize
+    realm.stakater.com/realm-import-sample: "true"
   name: keycloak-sample
 spec:
   instances: 1

@@ -18,13 +18,16 @@ package controller
 
 import (
 	"context"
-
+	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
+	"github.com/stakater/rhbk-operator/internal/resources"
+	v1 "k8s.io/api/apps/v1"
+	v12 "k8s.io/api/batch/v1"
+	v13 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
 )
 
 // KeycloakImportReconciler reconciles a KeycloakImport object
@@ -36,20 +39,94 @@ type KeycloakImportReconciler struct {
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloakimports,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloakimports/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloakimports/finalizers,verbs=update
+//+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloaks,verbs=get;list;watch
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the KeycloakImport object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.3/pkg/reconcile
 func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	realmCR := &ssov1alpha1.KeycloakImport{}
+	err := r.Get(ctx, req.NamespacedName, realmCR)
+
+	if errors.IsNotFound(err) {
+		return ctrl.Result{}, nil
+	} else if client.IgnoreNotFound(err) != nil {
+		return ctrl.Result{}, err
+	}
+
+	keycloak := &ssov1alpha1.Keycloak{}
+	err = r.Get(ctx, client.ObjectKey{
+		Namespace: realmCR.Spec.KeycloakInstance.Namespace,
+		Name:      realmCR.Spec.KeycloakInstance.Name,
+	}, keycloak)
+
+	if err != nil {
+		logger.Info("RHBK resource is does not exists")
+		return ctrl.Result{}, nil
+	}
+
+	statefulSet := &v1.StatefulSet{}
+	err = r.Get(ctx, client.ObjectKey{
+		Name:      resources.GetStatefulSetName(keycloak),
+		Namespace: keycloak.Namespace,
+	}, statefulSet)
+
+	if err != nil {
+		logger.Info("RHBK deployment is not yet ready")
+		return ctrl.Result{}, nil
+	}
+
+	realmSecret := &v13.Secret{}
+	err = r.Get(ctx, client.ObjectKey{
+		Name:      resources.GetImportJobSecretName(realmCR),
+		Namespace: statefulSet.Namespace,
+	}, realmSecret)
+
+	if err != nil {
+		if errors.IsNotFound(err) {
+			sr := &resources.ImportRealmSecret{
+				ImportCR: realmCR,
+				Scheme:   r.Scheme,
+			}
+
+			err = sr.Build()
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+
+			err = r.Create(ctx, sr.Resource)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+
+		return ctrl.Result{}, err
+	}
+
+	job := &v12.Job{}
+	err = r.Get(ctx, client.ObjectKey{
+		Name:      resources.GetImportJobName(realmCR),
+		Namespace: statefulSet.Namespace,
+	}, job)
+
+	if err != nil {
+		if errors.IsNotFound(err) {
+			job := &resources.ImportJob{
+				ImportCR:    realmCR,
+				Scheme:      r.Scheme,
+				StatefulSet: statefulSet,
+			}
+
+			err := job.Build()
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+
+			err = r.Create(ctx, job.Job)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	}
 
 	return ctrl.Result{}, nil
 }
