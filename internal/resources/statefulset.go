@@ -17,7 +17,7 @@ import (
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
 )
 
-const RHBKImage = "registry.redhat.io/rhbk/keycloak-rhel9@sha256:89f9c4680ac4be190904fefe720403f3bc43cfd245fdac23154b35e0d7a74a3b"
+const RHBKImage = "registry.redhat.io/rhbk/keycloak-rhel9:26.0-6"
 
 type RHBKStatefulSet struct {
 	Keycloak *v1alpha1.Keycloak

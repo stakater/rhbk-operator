@@ -17,24 +17,24 @@ spec:
       secret:
         name: admin
         key: password
-#  database:
-#    name:
-#      secret:
-#        name: plankton-cluster-pguser-rhbk
-#        key: dbname
-#    host:
-#      secret:
-#        name: plankton-cluster-pguser-rhbk
-#        key: host
-#    port:
-#      secret:
-#        name: plankton-cluster-pguser-rhbk
-#        key: port
-#    user:
-#      secret:
-#        name: plankton-cluster-pguser-rhbk
-#        key: user
-#    password:
-#      secret:
-#        name: plankton-cluster-pguser-rhbk
-#        key: password
+  database:
+    name:
+      secret:
+        name: plankton-pguser-rhbk
+        key: dbname
+    host:
+      secret:
+        name: plankton-pguser-rhbk
+        key: host
+    port:
+      secret:
+        name: plankton-pguser-rhbk
+        key: port
+    user:
+      secret:
+        name: plankton-pguser-rhbk
+        key: user
+    password:
+      secret:
+        name: plankton-pguser-rhbk
+        key: password
