@@ -21,51 +21,98 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	batchv1 "k8s.io/api/batch/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
+	"github.com/stakater/rhbk-operator/internal/resources"
 )
 
 var _ = Describe("KeycloakImport Controller", func() {
 	Context("When reconciling a resource", func() {
-		const resourceName = "test-resource"
+		const resourceName = "test-realm"
 
 		ctx := context.Background()
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
+			Namespace: "rhsso-realm",
 		}
 		keycloakimport := &ssov1alpha1.KeycloakImport{}
+		keycloak := &ssov1alpha1.Keycloak{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "keycloak",
+				Namespace: "rhsso",
+			},
+			Spec: ssov1alpha1.KeycloakSpec{
+				Instances: &[]int32{1}[0],
+			},
+		}
 
 		BeforeEach(func() {
+			By("creating the custom resource for the Kind Keycloak")
+			err := k8sClient.Create(ctx, keycloak)
+			Expect(err).NotTo(HaveOccurred())
+
+			k8sClient.Create(ctx, &v1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "rhsso-realm",
+				},
+			})
+
 			By("creating the custom resource for the Kind KeycloakImport")
-			err := k8sClient.Get(ctx, typeNamespacedName, keycloakimport)
+			err = k8sClient.Get(ctx, typeNamespacedName, keycloakimport)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &ssov1alpha1.KeycloakImport{
+				keycloakimport := &ssov1alpha1.KeycloakImport{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
-						Namespace: "default",
+						Namespace: "rhsso-realm",
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: ssov1alpha1.KeycloakImportSpec{
+						KeycloakInstance: ssov1alpha1.KeycloakInstance{
+							Name:      keycloak.Name,
+							Namespace: keycloak.Namespace,
+						},
+						JSON: `{"realm": "test-realm"}`,
+					},
 				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+				Expect(k8sClient.Create(ctx, keycloakimport)).To(Succeed())
 			}
+
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{
+					Name:      keycloak.Name,
+					Namespace: keycloak.Namespace,
+				}, keycloak)
+			}).Should(Succeed())
+
+			Eventually(func() error {
+				return k8sClient.Get(ctx, typeNamespacedName, keycloakimport)
+			}).Should(Succeed())
 		})
 
 		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
 			resource := &ssov1alpha1.KeycloakImport{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Cleanup the specific resource instance KeycloakImport")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+
+			By("Cleanup the custom resource for the Kind Keycloak")
+			resourceKeycloak := &ssov1alpha1.Keycloak{}
+			err = k8sClient.Get(ctx, types.NamespacedName{
+				Name:      keycloak.Name,
+				Namespace: keycloak.Namespace,
+			}, resourceKeycloak)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Delete(ctx, resourceKeycloak)).To(Succeed())
 		})
+
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &KeycloakImportReconciler{
@@ -77,8 +124,13 @@ var _ = Describe("KeycloakImport Controller", func() {
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
+
+			job := &batchv1.Job{}
+			err = k8sClient.Get(ctx, types.NamespacedName{
+				Name:      resources.GetImportJobName(keycloakimport),
+				Namespace: keycloakimport.Namespace,
+			}, job)
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })

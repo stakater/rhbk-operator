@@ -20,7 +20,15 @@ import (
 	"crypto/tls"
 	"flag"
 	route "github.com/openshift/api/route/v1"
+	"github.com/stakater/rhbk-operator/internal/constants"
+	v12 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/rest"
 	"os"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strconv"
+
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -116,23 +124,20 @@ func main() {
 		// if you are doing or is intended to do any operation such as perform cleanups
 		// after the manager stops then its usage might be unsafe.
 		// LeaderElectionReleaseOnCancel: true,
-		//NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
-		//	watchEnabledLabel := labels.Set{}
-		//	watchEnabledLabel[constants.RHBKAppLabel] = strconv.FormatBool(true)
-		//	opts.ByObject = map[client.Object]cache.ByObject{
-		//		&v1.StatefulSet{}: {
-		//			Label: labels.SelectorFromSet(watchEnabledLabel),
-		//		},
-		//		&v12.Service{}: {
-		//			Label: labels.SelectorFromSet(watchEnabledLabel),
-		//		},
-		//		&route.Route{}: {
-		//			Label: labels.SelectorFromSet(watchEnabledLabel),
-		//		},
-		//	}
-		//
-		//	return cache.New(config, opts)
-		//},
+		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
+			watchEnabledLabel := labels.Set{
+				constants.RHBKWatchedResourceLabel: strconv.FormatBool(true),
+			}
+
+			// Only watch marked secrets
+			opts.ByObject = map[client.Object]cache.ByObject{
+				&v12.Secret{}: {
+					Label: labels.SelectorFromSet(watchEnabledLabel),
+				},
+			}
+
+			return cache.New(config, opts)
+		},
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

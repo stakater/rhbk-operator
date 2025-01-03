@@ -56,6 +56,48 @@ spec:
               overrideIfExists:
                 description: Override if realm already exists
                 type: boolean
+              providers:
+                description: Custom providers to add to the SSO installation
+                items:
+                  properties:
+                    name:
+                      type: string
+                    url:
+                      properties:
+                        secret:
+                          description: SecretKeySelector selects a key of a Secret.
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must
+                                be a valid secret key.
+                              type: string
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                TODO: Add other useful fields. apiVersion, kind, uid?
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must
+                                be defined
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        value:
+                          type: string
+                      type: object
+                  required:
+                  - name
+                  - url
+                  type: object
+                type: array
               substitutions:
                 description: Realm variable replacement with format ${VAR_NAME}
                 items:
@@ -100,6 +142,14 @@ spec:
             type: object
           status:
             description: KeycloakImportStatus defines the observed state of KeycloakImport
+            properties:
+              version:
+                properties:
+                  resourceVersions:
+                    additionalProperties:
+                      type: string
+                    type: object
+                type: object
             type: object
         type: object
     served: true

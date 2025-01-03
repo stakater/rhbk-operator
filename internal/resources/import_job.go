@@ -32,52 +32,41 @@ func GetRealmMountPath(cr *v1alpha1.KeycloakImport) string {
 }
 
 func (j *ImportJob) Build() error {
-
 	template := j.StatefulSet.Spec.Template.DeepCopy()
 	template.Labels["app"] = "realm-import-job"
 	kcContainer := &template.Spec.Containers[0]
 
-	envs := map[string]*v1alpha1.SecretOption{
-		"KC_CACHE": {
-			Value: "local",
-		},
-		"KC_HEALTH_ENABLED": {
-			Value: "false",
-		},
-		"KC_CACHE_STACK": nil,
-	}
-
-	// Setup ENV replacement
-	for _, substitution := range j.ImportCR.Spec.Substitutions {
-		envs[substitution.Name] = &v1alpha1.SecretOption{
-			Value:  substitution.Value,
-			Secret: substitution.Secret,
-		}
+	toModify := map[string]string{
+		"KC_CACHE":          "local",
+		"KC_HEALTH_ENABLED": "false",
+		"KC_CACHE_STACK":    "",
 	}
 
 	// Setup ENVs for a job
 	var next []v14.EnvVar
 	for _, v := range kcContainer.Env {
-		if n, ok := envs[v.Name]; ok {
-			if n == nil {
+		if n, ok := toModify[v.Name]; ok {
+			if n == "" {
 				continue
 			}
 
-			nextVar := v14.EnvVar{
+			next = append(next, v14.EnvVar{
 				Name:  v.Name,
-				Value: n.Value,
-			}
-
-			if n.Secret != nil {
-				nextVar.ValueFrom = &v14.EnvVarSource{
-					SecretKeyRef: n.Secret,
-				}
-			}
-
-			next = append(next, nextVar)
+				Value: n,
+			})
 		} else {
 			next = append(next, v)
 		}
+	}
+
+	// Setup ENV replacement
+	for _, substitution := range j.ImportCR.Spec.Substitutions {
+		next = append(next, v14.EnvVar{
+			Name: substitution.Name,
+			ValueFrom: &v14.EnvVarSource{
+				SecretKeyRef: substitution.Secret,
+			},
+		})
 	}
 
 	// Setup volume for mounting realm JSON
@@ -96,6 +85,13 @@ func (j *ImportJob) Build() error {
 		MountPath: "/mnt/realm-import",
 	})
 
+	// Setup providers import
+	if j.ImportCR.Spec.Providers != nil {
+		template.Spec.InitContainers = GetInitContainer(j.ImportCR)
+	}
+
+	kcContainer.Env = next
+
 	// Remove probes
 	kcContainer.ReadinessProbe = nil
 	kcContainer.LivenessProbe = nil
@@ -105,9 +101,15 @@ func (j *ImportJob) Build() error {
 		"/bin/bash",
 	}
 
+	buildProviders := ""
+	if j.ImportCR.Spec.Providers != nil {
+		buildProviders = "/opt/keycloak/bin/kc.sh --verbose build && "
+	}
+
 	args := []string{
 		"-c",
-		fmt.Sprintf(`/opt/keycloak/bin/kc.sh --verbose build && /opt/keycloak/bin/kc.sh --verbose import --optimized --file='%s' --override=%t`,
+		fmt.Sprintf(`%s/opt/keycloak/bin/kc.sh --verbose import --optimized --file='%s' --override=%t`,
+			buildProviders,
 			GetRealmMountPath(j.ImportCR),
 			j.ImportCR.Spec.OverrideIfExists),
 	}

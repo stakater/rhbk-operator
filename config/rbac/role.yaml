@@ -7,6 +7,24 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - PersistentVolumeClaim
+  verbs:
+  - create
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - Secret
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - Service
   verbs:
   - create

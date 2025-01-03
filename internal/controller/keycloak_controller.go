@@ -18,9 +18,8 @@ package controller
 
 import (
 	"context"
+
 	v12 "github.com/openshift/api/route/v1"
-	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
-	"github.com/stakater/rhbk-operator/internal/resources"
 	v13 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -30,6 +29,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+
+	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
+	"github.com/stakater/rhbk-operator/internal/resources"
 )
 
 type KeycloakReconciler struct {
@@ -42,6 +44,7 @@ type KeycloakReconciler struct {
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloaks/finalizers,verbs=update
 //+kubebuilder:rbac:groups=apps,resources=StatefulSet,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=Service,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=PersistentVolumeClaim,verbs=get;list;watch;create;update;
 //+kubebuilder:rbac:groups=route.openshift.io,resources=Route,verbs=get;list;watch;create;update;patch;delete
 
 func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -63,7 +66,7 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	err = serviceResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{Requeue: true}, err
 	}
 
 	routeResource := resources.RHBKRoute{
@@ -73,7 +76,7 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	err = routeResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{Requeue: true}, err
 	}
 
 	discoveryServiceResource := resources.RHBKDiscoveryService{
@@ -82,7 +85,17 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	err = discoveryServiceResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{Requeue: true}, err
+	}
+
+	sharedPVC := &resources.SharedPCV{
+		Keycloak: cr,
+		Scheme:   r.Scheme,
+	}
+
+	err = sharedPVC.CreateOrUpdate(ctx, r.Client)
+	if err != nil {
+		return ctrl.Result{Requeue: true}, err
 	}
 
 	statefulSetResource := &resources.RHBKStatefulSet{
@@ -92,7 +105,7 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	err = statefulSetResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{Requeue: true}, err
 	}
 
 	return ctrl.Result{}, r.Status().Update(ctx, cr)
@@ -105,5 +118,6 @@ func (r *KeycloakReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&v1.Service{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&v12.Route{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&v13.StatefulSet{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Owns(&v1.PersistentVolumeClaim{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }

@@ -23,18 +23,12 @@ import (
 
 // KeycloakSpec defines the desired state of Keycloak
 type KeycloakSpec struct {
-	Database          *PostgresDatabase `json:"database"`
+	Database          *PostgresDatabase `json:"database,omitempty"`
 	AdditionalOptions []SecretOptionVar `json:"additionalOptions,omitempty"`
 	Features          *Features         `json:"features,omitempty"`
 	Instances         *int32            `json:"instances"`
 	Truststore        []Truststore      `json:"truststore,omitempty"`
 	Admin             AdminUser         `json:"admin,omitempty"`
-	Providers         []Provider        `json:"providers,omitempty"`
-}
-
-type Provider struct {
-	Name string       `json:"name"`
-	URL  SecretOption `json:"url"`
 }
 
 type AdminUser struct {
@@ -73,15 +67,6 @@ type SecretOption struct {
 
 // KeycloakStatus defines the observed state of Keycloak
 type KeycloakStatus struct {
-	ResourceVersions map[string]string `json:"resourceVersions"`
-}
-
-func (s *KeycloakStatus) UpdateVersion(resource string, version string) {
-	if s.ResourceVersions == nil {
-		s.ResourceVersions = make(map[string]string)
-	}
-
-	s.ResourceVersions[resource] = version
 }
 
 //+kubebuilder:object:root=true

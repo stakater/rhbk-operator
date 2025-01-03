@@ -26,8 +26,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"time"
 )
 
 // KeycloakImportReconciler reconciles a KeycloakImport object
@@ -40,6 +45,8 @@ type KeycloakImportReconciler struct {
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloakimports/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloakimports/finalizers,verbs=update
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloaks,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=Secret,verbs=get;list;watch
+//+kubebuilder:rbac:groups=apps,resources=StatefulSet,verbs=get;
 
 func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
@@ -61,7 +68,7 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	if err != nil {
 		logger.Info("RHBK resource is does not exists")
-		return ctrl.Result{}, nil
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
 	statefulSet := &v1.StatefulSet{}
@@ -72,7 +79,24 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	if err != nil {
 		logger.Info("RHBK deployment is not yet ready")
-		return ctrl.Result{}, nil
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	}
+
+	// Fetch substitutions
+	substitutions := make(map[string]string)
+	for _, s := range realmCR.Spec.Substitutions {
+		secret := &v13.Secret{}
+		err = r.Get(ctx, client.ObjectKey{
+			Name:      s.Secret.Name,
+			Namespace: realmCR.Namespace,
+		}, secret)
+
+		if err != nil {
+			logger.Error(err, "error fetching secret")
+			return ctrl.Result{}, err
+		}
+
+		substitutions[s.Name] = string(secret.Data[s.Secret.Key])
 	}
 
 	realmSecret := &v13.Secret{}
@@ -88,7 +112,7 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				Scheme:   r.Scheme,
 			}
 
-			err = sr.Build()
+			err = sr.Build(substitutions)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
@@ -125,15 +149,42 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			if err != nil {
 				return ctrl.Result{}, err
 			}
+		} else {
+			return ctrl.Result{}, err
 		}
 	}
 
+	if resources.IsJobCompleted(job) {
+		return ctrl.Result{}, r.RolloutChanges(ctx, statefulSet)
+	}
+
 	return ctrl.Result{}, nil
+}
+
+func (r *KeycloakImportReconciler) RolloutChanges(ctx context.Context, statefulSet *v1.StatefulSet) error {
+	if statefulSet.Spec.Template.Annotations == nil {
+		statefulSet.Spec.Template.Annotations = make(map[string]string)
+	}
+	statefulSet.Spec.Template.Annotations["statefulset.kubernetes.io/rollout"] = time.Now().Format(time.RFC3339)
+	return r.Update(ctx, statefulSet)
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *KeycloakImportReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ssov1alpha1.KeycloakImport{}).
+		Owns(&v13.Secret{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Owns(&v12.Job{}, builder.WithPredicates(predicate.Funcs{
+			UpdateFunc: func(e event.TypedUpdateEvent[client.Object]) bool {
+				old := e.ObjectOld.(*v12.Job)
+				recent := e.ObjectNew.(*v12.Job)
+
+				return !resources.IsJobCompleted(old) && resources.IsJobCompleted(recent)
+			},
+		})).
+		Watches(&v1.StatefulSet{}, &handler.EnqueueRequestForObject{},
+			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Watches(&ssov1alpha1.Keycloak{}, &handler.EnqueueRequestForObject{},
+			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }

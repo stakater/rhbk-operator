@@ -21,24 +21,29 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
+	"github.com/stakater/rhbk-operator/internal/resources"
 )
 
 var _ = Describe("Keycloak Controller", func() {
 	Context("When reconciling a resource", func() {
 		const resourceName = "test-resource"
+		const resourceNs = "rhsso"
 
 		ctx := context.Background()
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
+			Namespace: resourceNs,
 		}
 		keycloak := &ssov1alpha1.Keycloak{}
 
@@ -46,28 +51,39 @@ var _ = Describe("Keycloak Controller", func() {
 			By("creating the custom resource for the Kind Keycloak")
 			err := k8sClient.Get(ctx, typeNamespacedName, keycloak)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &ssov1alpha1.Keycloak{
+
+				keycloak = &ssov1alpha1.Keycloak{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
-						Namespace: "default",
+						Namespace: resourceNs,
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: ssov1alpha1.KeycloakSpec{
+						Instances: &[]int32{1}[0],
+						Admin: ssov1alpha1.AdminUser{
+							Username: ssov1alpha1.SecretOption{
+								Value: "admin",
+							},
+							Password: ssov1alpha1.SecretOption{
+								Value: "admin",
+							},
+						},
+					},
 				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+				Expect(k8sClient.Create(ctx, keycloak)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &ssov1alpha1.Keycloak{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
+			keycloak = &ssov1alpha1.Keycloak{}
+			err := k8sClient.Get(ctx, typeNamespacedName, keycloak)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Cleanup the specific resource instance Keycloak")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, keycloak)).To(Succeed())
 		})
-		It("should successfully reconcile the resource", func() {
-			By("Reconciling the created resource")
+
+		It("should successfully reconcile the Route resource", func() {
+			By("Reconciling the keycloak resource")
 			controllerReconciler := &KeycloakReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
@@ -77,8 +93,60 @@ var _ = Describe("Keycloak Controller", func() {
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
+
+			By("Checking Statefulset resource has been created")
+			statefulSets := &appsv1.StatefulSetList{}
+			err = k8sClient.List(ctx, statefulSets, &client.ListOptions{
+				LabelSelector: labels.SelectorFromSet(labels.Set{"app": "rhbk"}),
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(statefulSets.Items).To(HaveLen(1))
+			Expect(statefulSets.Items[0].Name).To(Equal(resourceName))
+			Expect(statefulSets.Items[0].Spec.Replicas).To(Equal(keycloak.Spec.Instances))
+		})
+
+		It("should successfully reconcile service resource", func() {
+			By("Reconciling the keycloak resource")
+			controllerReconciler := &KeycloakReconciler{
+				Client: k8sClient,
+				Scheme: k8sClient.Scheme(),
+			}
+
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Checking Service resource has been created")
+			svc := &v1.Service{}
+			err = k8sClient.Get(ctx, types.NamespacedName{
+				Namespace: resourceNs,
+				Name:      resources.GetSvcName(keycloak),
+			}, svc)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(svc.Name).To(Equal(resources.GetSvcName(keycloak)))
+		})
+
+		It("should successfully reconcile discovery service resource", func() {
+			By("Reconciling the keycloak resource")
+			controllerReconciler := &KeycloakReconciler{
+				Client: k8sClient,
+				Scheme: k8sClient.Scheme(),
+			}
+
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Checking Service resource has been created")
+			svc := &v1.Service{}
+			err = k8sClient.Get(ctx, types.NamespacedName{
+				Namespace: resourceNs,
+				Name:      resources.GetDiscoverySvcName(keycloak),
+			}, svc)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(svc.Name).To(Equal(resources.GetDiscoverySvcName(keycloak)))
 		})
 	})
 })

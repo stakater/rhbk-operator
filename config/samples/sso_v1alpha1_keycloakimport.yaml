@@ -9,13 +9,20 @@ spec:
   keycloakInstance:
     name: keycloak-sample
     namespace: rhsso
+  providers:
+    - name: keycloak-metrics-spi-6.0.0.jar
+      url:
+        secret:
+          name: custom-spi
+          key: metrics-spi
   substitutions:
     - name: DISPLAY_NAME
       secret:
         name: test-realm-secret
         key: displayName
+  overrideIfExists: true
   json: |
     {
       "realm": "test-realm",
-      "displayName": "${DISPLAY_NAME}"
+      "displayName": "%.DISPLAY_NAME% changed"
     }

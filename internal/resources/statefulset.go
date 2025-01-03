@@ -3,8 +3,8 @@ package resources
 import (
 	"context"
 	"fmt"
-	"github.com/stakater/rhbk-operator/api/v1alpha1"
-	"github.com/stakater/rhbk-operator/internal/constants"
+	"strconv"
+
 	v1 "k8s.io/api/apps/v1"
 	v12 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -13,10 +13,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"strconv"
+
+	"github.com/stakater/rhbk-operator/api/v1alpha1"
 )
 
-const RHBKImage = "registry.redhat.io/rhbk/keycloak-rhel9:24-17"
+const RHBKImage = "registry.redhat.io/rhbk/keycloak-rhel9@sha256:89f9c4680ac4be190904fefe720403f3bc43cfd245fdac23154b35e0d7a74a3b"
 
 type RHBKStatefulSet struct {
 	Keycloak *v1alpha1.Keycloak
@@ -29,10 +30,58 @@ func GetStatefulSetName(cr *v1alpha1.Keycloak) string {
 	return cr.Name
 }
 
+func (ks *RHBKStatefulSet) GetDBEnvs() []v12.EnvVar {
+	if ks.Keycloak.Spec.Database != nil {
+		return []v12.EnvVar{
+			{
+				Name:  "KC_DB",
+				Value: "postgres",
+			},
+			{
+				Name: "KC_DB_USERNAME",
+				ValueFrom: &v12.EnvVarSource{
+					SecretKeyRef: ks.Keycloak.Spec.Database.User.Secret,
+				},
+			},
+			{
+				Name: "KC_DB_PASSWORD",
+				ValueFrom: &v12.EnvVarSource{
+					SecretKeyRef: ks.Keycloak.Spec.Database.Password.Secret,
+				},
+			},
+			{
+				Name: "KC_DB_URL_HOST",
+				ValueFrom: &v12.EnvVarSource{
+					SecretKeyRef: ks.Keycloak.Spec.Database.Host.Secret,
+				},
+			},
+			{
+				Name: "KC_DB_URL_PORT",
+				ValueFrom: &v12.EnvVarSource{
+					SecretKeyRef: ks.Keycloak.Spec.Database.Port.Secret,
+				},
+			},
+			{
+				Name:  "KC_DB_POOL_INITIAL_SIZE",
+				Value: "30",
+			},
+			{
+				Name:  "KC_DB_POOL_MIN_SIZE",
+				Value: "30",
+			},
+			{
+				Name:  "KC_DB_POOL_MAX_SIZE",
+				Value: "30",
+			},
+		}
+	}
+
+	return []v12.EnvVar{}
+}
+
 func (ks *RHBKStatefulSet) Build() error {
 	labels := map[string]string{
-		"app":                  "rhbk",
-		constants.RHBKAppLabel: strconv.FormatBool(true),
+		"app": "rhbk",
 	}
 
 	ks.Resource.ObjectMeta.Labels = labels
@@ -76,22 +125,18 @@ func (ks *RHBKStatefulSet) Build() error {
 							},
 							{
 								Name:          "http",
-								ContainerPort: HttpPort,
+								ContainerPort: ManagementPort,
 								Protocol:      v12.ProtocolTCP,
 							},
 						},
-						Env: []v12.EnvVar{
+						Env: append([]v12.EnvVar{
 							{
 								Name:  "KC_HOSTNAME",
 								Value: ks.HostName,
 							},
 							{
-								Name:  "KC_HTTP_ENABLED",
-								Value: strconv.FormatBool(true),
-							},
-							{
 								Name:  "KC_HTTP_PORT",
-								Value: strconv.FormatInt(HttpPort, 10),
+								Value: strconv.FormatInt(ManagementPort, 10),
 							},
 							{
 								Name:  "KC_HTTPS_PORT",
@@ -106,46 +151,6 @@ func (ks *RHBKStatefulSet) Build() error {
 								Value: "/mnt/certificates/tls.key",
 							},
 							{
-								Name:  "KC_DB",
-								Value: "postgres",
-							},
-							{
-								Name: "KC_DB_USERNAME",
-								ValueFrom: &v12.EnvVarSource{
-									SecretKeyRef: ks.Keycloak.Spec.Database.User.Secret,
-								},
-							},
-							{
-								Name: "KC_DB_PASSWORD",
-								ValueFrom: &v12.EnvVarSource{
-									SecretKeyRef: ks.Keycloak.Spec.Database.Password.Secret,
-								},
-							},
-							{
-								Name: "KC_DB_URL_HOST",
-								ValueFrom: &v12.EnvVarSource{
-									SecretKeyRef: ks.Keycloak.Spec.Database.Host.Secret,
-								},
-							},
-							{
-								Name: "KC_DB_URL_PORT",
-								ValueFrom: &v12.EnvVarSource{
-									SecretKeyRef: ks.Keycloak.Spec.Database.Port.Secret,
-								},
-							},
-							{
-								Name:  "KC_DB_POOL_INITIAL_SIZE",
-								Value: "30",
-							},
-							{
-								Name:  "KC_DB_POOL_MIN_SIZE",
-								Value: "30",
-							},
-							{
-								Name:  "KC_DB_POOL_MAX_SIZE",
-								Value: "30",
-							},
-							{
 								Name:  "KC_HEALTH_ENABLED",
 								Value: strconv.FormatBool(true),
 							},
@@ -158,17 +163,13 @@ func (ks *RHBKStatefulSet) Build() error {
 								Value: "kubernetes",
 							},
 							{
-								Name:  "KC_PROXY",
-								Value: "passthrough",
-							},
-							{
-								Name: "KEYCLOAK_ADMIN",
+								Name: "KC_BOOTSTRAP_ADMIN_USERNAME",
 								ValueFrom: &v12.EnvVarSource{
 									SecretKeyRef: ks.Keycloak.Spec.Admin.Username.Secret,
 								},
 							},
 							{
-								Name: "KEYCLOAK_ADMIN_PASSWORD",
+								Name: "KC_BOOTSTRAP_ADMIN_PASSWORD",
 								ValueFrom: &v12.EnvVarSource{
 									SecretKeyRef: ks.Keycloak.Spec.Admin.Password.Secret,
 								},
@@ -177,7 +178,15 @@ func (ks *RHBKStatefulSet) Build() error {
 								Name:  "KC_TRUSTSTORE_PATHS",
 								Value: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt,/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt",
 							},
-						},
+							{
+								Name:  "KC_TRACING_SERVICE_NAME",
+								Value: ks.Keycloak.Name,
+							},
+							{
+								Name:  "KC_TRACING_RESOURCE_ATTRIBUTES",
+								Value: fmt.Sprintf("k8s.namespace.name=%s", ks.Keycloak.Namespace),
+							},
+						}, ks.GetDBEnvs()...),
 						Resources: v12.ResourceRequirements{
 							Requests: v12.ResourceList{
 								v12.ResourceMemory: resource.MustParse("1700Mi"),
@@ -191,33 +200,39 @@ func (ks *RHBKStatefulSet) Build() error {
 								HTTPGet: &v12.HTTPGetAction{
 									Path: "/health/live",
 									Port: intstr.IntOrString{
-										IntVal: HttpsPort,
+										IntVal: ManagementPort,
 									},
 									Scheme: v12.URISchemeHTTPS,
 								},
 							},
+							PeriodSeconds:    10,
+							FailureThreshold: 3,
 						},
 						ReadinessProbe: &v12.Probe{
 							ProbeHandler: v12.ProbeHandler{
 								HTTPGet: &v12.HTTPGetAction{
 									Path: "/health/ready",
 									Port: intstr.IntOrString{
-										IntVal: HttpsPort,
+										IntVal: ManagementPort,
 									},
 									Scheme: v12.URISchemeHTTPS,
 								},
 							},
+							PeriodSeconds:    10,
+							FailureThreshold: 3,
 						},
 						StartupProbe: &v12.Probe{
 							ProbeHandler: v12.ProbeHandler{
 								HTTPGet: &v12.HTTPGetAction{
 									Path: "/health/started",
 									Port: intstr.IntOrString{
-										IntVal: HttpsPort,
+										IntVal: ManagementPort,
 									},
 									Scheme: v12.URISchemeHTTPS,
 								},
 							},
+							PeriodSeconds:    1,
+							FailureThreshold: 600,
 						},
 						VolumeMounts: []v12.VolumeMount{
 							{
@@ -231,7 +246,6 @@ func (ks *RHBKStatefulSet) Build() error {
 						},
 					},
 				},
-				InitContainers: GetInitContainer(ks.Keycloak),
 				Volumes: []v12.Volume{
 					{
 						Name: "keycloak-tls-certificates",
@@ -252,9 +266,22 @@ func (ks *RHBKStatefulSet) Build() error {
 				},
 			},
 		},
+		VolumeClaimTemplates: []v12.PersistentVolumeClaim{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "providers",
+				},
+				Spec: v12.PersistentVolumeClaimSpec{
+					AccessModes: []v12.PersistentVolumeAccessMode{v12.ReadWriteOnce},
+					Resources: v12.VolumeResourceRequirements{
+						Requests: v12.ResourceList{
+							v12.ResourceStorage: resource.MustParse("1Gi"),
+						},
+					},
+				},
+			},
+		},
 	}
-
-	ks.Keycloak.Status.UpdateVersion(ks.Resource.Kind, ComputeHash(ks.Resource.Spec))
 
 	err := controllerutil.SetControllerReference(ks.Keycloak, ks.Resource, ks.Scheme)
 	if err != nil {

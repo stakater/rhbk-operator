@@ -36,6 +36,14 @@ type KeycloakImportSpec struct {
 
 	// Override if realm already exists
 	OverrideIfExists bool `json:"overrideIfExists,omitempty"`
+
+	// Custom providers to add to the SSO installation
+	Providers []Provider `json:"providers,omitempty"`
+}
+
+type Provider struct {
+	Name string       `json:"name"`
+	URL  SecretOption `json:"url"`
 }
 
 type KeycloakInstance struct {
@@ -45,8 +53,7 @@ type KeycloakInstance struct {
 
 // KeycloakImportStatus defines the observed state of KeycloakImport
 type KeycloakImportStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Version VersionedStatus `json:"version,omitempty"`
 }
 
 //+kubebuilder:object:root=true

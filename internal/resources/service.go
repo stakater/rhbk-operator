@@ -17,7 +17,7 @@ type RHBKService struct {
 	Resource *v1.Service
 }
 
-const HttpPort = 8080
+const ManagementPort = 9000
 const HttpsPort = 8443
 
 func GetTLSSecretName(cr *v1alpha1.Keycloak) string {
@@ -39,11 +39,11 @@ func (s *RHBKService) Build() error {
 	s.Resource.Spec = v1.ServiceSpec{
 		Ports: []v1.ServicePort{
 			{
-				Name:     "http",
+				Name:     "management",
 				Protocol: v1.ProtocolTCP,
-				Port:     HttpPort,
+				Port:     ManagementPort,
 				TargetPort: intstr.IntOrString{
-					IntVal: HttpPort,
+					IntVal: ManagementPort,
 				},
 			},
 			{

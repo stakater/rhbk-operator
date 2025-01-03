@@ -4,13 +4,11 @@ import (
 	"context"
 	v1 "github.com/openshift/api/route/v1"
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
-	"github.com/stakater/rhbk-operator/internal/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"strconv"
 )
 
 type RHBKRoute struct {
@@ -21,8 +19,7 @@ type RHBKRoute struct {
 
 func (s *RHBKRoute) Build() error {
 	s.Resource.Labels = map[string]string{
-		"app":                  "rhbk",
-		constants.RHBKAppLabel: strconv.FormatBool(true),
+		"app": "rhbk",
 	}
 
 	s.Resource.Spec = v1.RouteSpec{

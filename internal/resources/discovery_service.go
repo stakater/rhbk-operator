@@ -3,14 +3,12 @@ package resources
 import (
 	"context"
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
-	"github.com/stakater/rhbk-operator/internal/constants"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"strconv"
 )
 
 type RHBKDiscoveryService struct {
@@ -27,8 +25,7 @@ func GetDiscoverySvcName(cr *v1alpha1.Keycloak) string {
 
 func (s *RHBKDiscoveryService) Build() error {
 	s.Resource.Labels = map[string]string{
-		"app":                  "rhbk",
-		constants.RHBKAppLabel: strconv.FormatBool(true),
+		"app": "rhbk",
 	}
 
 	s.Resource.Spec = v1.ServiceSpec{
@@ -36,7 +33,7 @@ func (s *RHBKDiscoveryService) Build() error {
 		PublishNotReadyAddresses: true,
 		Ports: []v1.ServicePort{
 			{
-				Name:     "http",
+				Name:     "tcp",
 				Protocol: v1.ProtocolTCP,
 				Port:     DiscoveryPort,
 				TargetPort: intstr.IntOrString{
