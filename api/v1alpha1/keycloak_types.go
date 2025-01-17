@@ -67,6 +67,11 @@ type SecretOption struct {
 
 // KeycloakStatus defines the observed state of Keycloak
 type KeycloakStatus struct {
+	// +patchMergeKey=type
+	// +patchStrategy=merge
+	// +listType=map
+	// +listMapKey=type
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 }
 
 //+kubebuilder:object:root=true

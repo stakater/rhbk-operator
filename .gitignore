@@ -18,8 +18,8 @@ go.work
 
 # Kubernetes Generated files - skip generated files, except for vendored files
 !vendor/**/zz_generated.*
-!/bundle/
-!/bundle_*/
+bundle/*
+bundle_*/*
 
 # editor and IDE paraphernalia
 .idea

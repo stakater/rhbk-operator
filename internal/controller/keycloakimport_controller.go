@@ -182,8 +182,6 @@ func (r *KeycloakImportReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				return !resources.IsJobCompleted(old) && resources.IsJobCompleted(recent)
 			},
 		})).
-		Watches(&v1.StatefulSet{}, &handler.EnqueueRequestForObject{},
-			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Watches(&ssov1alpha1.Keycloak{}, &handler.EnqueueRequestForObject{},
 			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
