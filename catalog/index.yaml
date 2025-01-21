@@ -10,6 +10,10 @@ schema: olm.channel
 package: rhbk-operator
 name: preview
 entries:
+  - name: rhbk-operator.v0.0.4
+    skips:
+      - rhbk-operator.v0.0.1
+      - rhbk-operator.v0.0.2
   - name: rhbk-operator.v0.0.2
     replaces: rhbk-operator.v0.0.1
   - name: rhbk-operator.v0.0.1
@@ -357,5 +361,178 @@ relatedImages:
 - image: gcr.io/kubebuilder/kube-rbac-proxy:v0.16.0
   name: ""
 - image: stakaterdockerhubpullroot/rhbk-operator:v0.0.2
+  name: ""
+schema: olm.bundle
+---
+image: docker.io/stakaterdockerhubpullroot/rhbk-operator-bundle:v0.0.4
+name: rhbk-operator.v0.0.4
+package: rhbk-operator
+properties:
+- type: olm.gvk
+  value:
+    group: sso.stakater.com
+    kind: Keycloak
+    version: v1alpha1
+- type: olm.gvk
+  value:
+    group: sso.stakater.com
+    kind: KeycloakImport
+    version: v1alpha1
+- type: olm.package
+  value:
+    packageName: rhbk-operator
+    version: 0.0.4
+- type: olm.csv.metadata
+  value:
+    annotations:
+      alm-examples: |-
+        [
+          {
+            "apiVersion": "sso.stakater.com/v1alpha1",
+            "kind": "Keycloak",
+            "metadata": {
+              "labels": {
+                "app.kubernetes.io/managed-by": "kustomize",
+                "app.kubernetes.io/name": "rhbk-operator",
+                "realm.stakater.com/realm-import-sample": "true"
+              },
+              "name": "keycloak-sample"
+            },
+            "spec": {
+              "admin": {
+                "password": {
+                  "secret": {
+                    "key": "password",
+                    "name": "admin"
+                  }
+                },
+                "username": {
+                  "secret": {
+                    "key": "username",
+                    "name": "admin"
+                  }
+                }
+              },
+              "database": {
+                "host": {
+                  "secret": {
+                    "key": "host",
+                    "name": "plankton-pguser-rhbk"
+                  }
+                },
+                "name": {
+                  "secret": {
+                    "key": "dbname",
+                    "name": "plankton-pguser-rhbk"
+                  }
+                },
+                "password": {
+                  "secret": {
+                    "key": "password",
+                    "name": "plankton-pguser-rhbk"
+                  }
+                },
+                "port": {
+                  "secret": {
+                    "key": "port",
+                    "name": "plankton-pguser-rhbk"
+                  }
+                },
+                "user": {
+                  "secret": {
+                    "key": "user",
+                    "name": "plankton-pguser-rhbk"
+                  }
+                }
+              },
+              "instances": 2
+            }
+          },
+          {
+            "apiVersion": "sso.stakater.com/v1alpha1",
+            "kind": "KeycloakImport",
+            "metadata": {
+              "labels": {
+                "app.kubernetes.io/managed-by": "kustomize",
+                "app.kubernetes.io/name": "rhbk-operator"
+              },
+              "name": "realm-import-sample"
+            },
+            "spec": {
+              "json": "{\n  \"realm\": \"test-realm\",\n  \"displayName\": \"%.DISPLAY_NAME% changed again\"\n}\n",
+              "keycloakInstance": {
+                "name": "keycloak-sample",
+                "namespace": "rhsso"
+              },
+              "overrideIfExists": true,
+              "providers": [
+                {
+                  "name": "keycloak-metrics-spi-6.0.0.jar",
+                  "url": {
+                    "secret": {
+                      "key": "metrics-spi",
+                      "name": "custom-spi"
+                    }
+                  }
+                }
+              ],
+              "substitutions": [
+                {
+                  "name": "DISPLAY_NAME",
+                  "secret": {
+                    "key": "displayName",
+                    "name": "test-realm-secret"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      capabilities: Basic Install
+      createdAt: "2025-01-21T08:29:47Z"
+      operators.operatorframework.io/builder: operator-sdk-v1.36.1
+      operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
+    apiServiceDefinitions: {}
+    crdDescriptions:
+      owned:
+      - description: KeycloakImport is the Schema for the keycloakimports API
+        displayName: Keycloak Import
+        kind: KeycloakImport
+        name: keycloakimports.sso.stakater.com
+        version: v1alpha1
+      - description: Keycloak is the Schema for the keycloaks API
+        displayName: Keycloak
+        kind: Keycloak
+        name: keycloaks.sso.stakater.com
+        version: v1alpha1
+    description: Go Operator SDK for RHBK
+    displayName: Stakater RHBK Operator
+    installModes:
+    - supported: false
+      type: OwnNamespace
+    - supported: false
+      type: SingleNamespace
+    - supported: false
+      type: MultiNamespace
+    - supported: true
+      type: AllNamespaces
+    keywords:
+    - RHBK
+    - Keycloak
+    - Red Hat
+    - Stakater
+    links:
+    - name: Rhbk Operator
+      url: https://rhbk-operator.domain
+    maturity: alpha
+    provider:
+      name: Stakater
+      url: stakater.com
+relatedImages:
+- image: docker.io/stakaterdockerhubpullroot/rhbk-operator-bundle:v0.0.4
+  name: ""
+- image: gcr.io/kubebuilder/kube-rbac-proxy:v0.16.0
+  name: ""
+- image: stakaterdockerhubpullroot/rhbk-operator:v0.0.4
   name: ""
 schema: olm.bundle

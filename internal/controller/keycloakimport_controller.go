@@ -45,8 +45,8 @@ type KeycloakImportReconciler struct {
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloakimports/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloakimports/finalizers,verbs=update
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloaks,verbs=get;list;watch
-//+kubebuilder:rbac:groups="",resources=Secret,verbs=get;list;watch
-//+kubebuilder:rbac:groups=apps,resources=StatefulSet,verbs=get;
+//+kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update
+//+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update
 
 func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)

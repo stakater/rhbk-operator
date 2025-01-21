@@ -43,10 +43,11 @@ type KeycloakReconciler struct {
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloaks,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloaks/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloaks/finalizers,verbs=update
-//+kubebuilder:rbac:groups=apps,resources=StatefulSet,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=Service,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=PersistentVolumeClaim,verbs=get;list;watch;create;update;
-//+kubebuilder:rbac:groups=route.openshift.io,resources=Route,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update
+//+kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update
+//+kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;watch;create;update
+//+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update
+//+kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=get;list;watch;create;update
 
 func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).WithName("keycloak-controller")
