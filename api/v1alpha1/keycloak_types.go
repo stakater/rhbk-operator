@@ -23,12 +23,38 @@ import (
 
 // KeycloakSpec defines the desired state of Keycloak
 type KeycloakSpec struct {
-	Database          *PostgresDatabase `json:"database,omitempty"`
+	// +required
+	// PostgreSQL Database configurations
+	Database *PostgresDatabase `json:"database"`
+
+	// +optional
+	// Extra options to load
 	AdditionalOptions []SecretOptionVar `json:"additionalOptions,omitempty"`
-	Features          *Features         `json:"features,omitempty"`
-	Instances         *int32            `json:"instances"`
-	Truststore        []Truststore      `json:"truststore,omitempty"`
-	Admin             AdminUser         `json:"admin,omitempty"`
+
+	// +optional
+	// Extra features to enabled
+	Features *Features `json:"features,omitempty"`
+
+	// +required
+	// Number of instances
+	Instances *int32 `json:"instances"`
+
+	// +optional
+	// Truststore configurations
+	Truststore []Truststore `json:"truststore,omitempty"`
+
+	// +optional
+	// Admin credentials
+	Admin AdminUser `json:"admin,omitempty"`
+
+	// +optional
+	// Custom providers & SPIs to add to the RHBK installation
+	Providers []Provider `json:"providers,omitempty"`
+}
+
+type Provider struct {
+	Name string       `json:"name"`
+	URL  SecretOption `json:"url"`
 }
 
 type AdminUser struct {
@@ -47,7 +73,6 @@ type Features struct {
 }
 
 type PostgresDatabase struct {
-	Name     SecretOption `json:"name"`
 	Host     SecretOption `json:"host"`
 	Port     SecretOption `json:"port"`
 	User     SecretOption `json:"user"`

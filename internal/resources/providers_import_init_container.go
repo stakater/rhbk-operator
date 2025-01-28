@@ -12,7 +12,7 @@ import (
 const BusyboxImage = "registry.access.redhat.com/ubi8/ubi:8.10-1088"
 const ProvidersPATH = "/opt/keycloak/providers"
 
-func GetInitContainer(cr *v1alpha1.KeycloakImport) []v1.Container {
+func GetInitContainer(cr *v1alpha1.Keycloak) []v1.Container {
 	if len(cr.Spec.Providers) == 0 {
 		return nil
 	}

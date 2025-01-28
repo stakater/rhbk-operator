@@ -20,7 +20,7 @@ type ImportJob struct {
 }
 
 func GetImportJobName(cr *v1alpha1.KeycloakImport) string {
-	return cr.Name
+	return fmt.Sprintf("%s-import", cr.Name)
 }
 
 func GetImportJobSecretVolumeName(cr *v1alpha1.KeycloakImport) string {
@@ -85,11 +85,6 @@ func (j *ImportJob) Build() error {
 		MountPath: "/mnt/realm-import",
 	})
 
-	// Setup providers import
-	if j.ImportCR.Spec.Providers != nil {
-		template.Spec.InitContainers = GetInitContainer(j.ImportCR)
-	}
-
 	kcContainer.Env = next
 
 	// Remove probes
@@ -101,11 +96,7 @@ func (j *ImportJob) Build() error {
 		"/bin/bash",
 	}
 
-	buildProviders := ""
-	if j.ImportCR.Spec.Providers != nil {
-		buildProviders = "/opt/keycloak/bin/kc.sh --verbose build && "
-	}
-
+	buildProviders := "/opt/keycloak/bin/kc.sh --verbose build && "
 	args := []string{
 		"-c",
 		fmt.Sprintf(`%s/opt/keycloak/bin/kc.sh --verbose import --optimized --file='%s' --override=%t`,

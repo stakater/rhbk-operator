@@ -18,10 +18,6 @@ spec:
         name: admin
         key: password
   database:
-    name:
-      secret:
-        name: plankton-pguser-rhbk
-        key: dbname
     host:
       secret:
         name: plankton-pguser-rhbk
@@ -38,3 +34,9 @@ spec:
       secret:
         name: plankton-pguser-rhbk
         key: password
+  providers:
+    - name: keycloak-metrics-spi-6.0.0.jar
+      url:
+        secret:
+          name: custom-spi
+          key: metrics-spi

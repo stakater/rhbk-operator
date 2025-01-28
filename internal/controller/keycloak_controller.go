@@ -45,7 +45,6 @@ type KeycloakReconciler struct {
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloaks/finalizers,verbs=update
 //+kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update
 //+kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update
-//+kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;watch;create;update
 //+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update
 //+kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=get;list;watch;create;update
 
@@ -86,16 +85,6 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		Scheme:   r.Scheme,
 	}
 	err = discoveryServiceResource.CreateOrUpdate(ctx, r.Client)
-	if err != nil {
-		return ctrl.Result{Requeue: true}, err
-	}
-
-	sharedPVC := &resources.SharedPCV{
-		Keycloak: cr,
-		Scheme:   r.Scheme,
-	}
-
-	err = sharedPVC.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
 		return ctrl.Result{Requeue: true}, err
 	}
@@ -146,6 +135,5 @@ func (r *KeycloakReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&v1.Service{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&v12.Route{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&v13.StatefulSet{}).
-		Owns(&v1.PersistentVolumeClaim{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }

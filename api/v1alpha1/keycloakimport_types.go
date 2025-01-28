@@ -28,22 +28,17 @@ type KeycloakImportSpec struct {
 	// Keycloak instance to import the realm
 	KeycloakInstance KeycloakInstance `json:"keycloakInstance"`
 
+	// +optional
 	// Exported Realm JSON
 	JSON string `json:"json"`
 
+	// +optional
 	// Realm variable replacement with format ${VAR_NAME}
 	Substitutions []SecretOptionVar `json:"substitutions,omitempty"`
 
+	// +optional
 	// Override if realm already exists
 	OverrideIfExists bool `json:"overrideIfExists,omitempty"`
-
-	// Custom providers to add to the SSO installation
-	Providers []Provider `json:"providers,omitempty"`
-}
-
-type Provider struct {
-	Name string       `json:"name"`
-	URL  SecretOption `json:"url"`
 }
 
 type KeycloakInstance struct {

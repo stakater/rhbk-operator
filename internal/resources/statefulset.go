@@ -107,6 +107,7 @@ func (ks *RHBKStatefulSet) Build() error {
 				Labels: labels,
 			},
 			Spec: v12.PodSpec{
+				InitContainers: GetInitContainer(ks.Keycloak),
 				Containers: []v12.Container{
 					{
 						Name:            "rhbk",
