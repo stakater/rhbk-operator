@@ -19,15 +19,16 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	"os"
+	"strconv"
+
 	route "github.com/openshift/api/route/v1"
 	"github.com/stakater/rhbk-operator/internal/constants"
 	v12 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/rest"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strconv"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.

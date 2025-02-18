@@ -18,6 +18,8 @@ package controller
 
 import (
 	"context"
+	"time"
+
 	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
 	"github.com/stakater/rhbk-operator/internal/resources"
 	v1 "k8s.io/api/apps/v1"
@@ -32,7 +34,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"time"
 )
 
 // KeycloakImportReconciler reconciles a KeycloakImport object

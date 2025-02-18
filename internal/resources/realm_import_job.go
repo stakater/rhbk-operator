@@ -2,6 +2,7 @@ package resources
 
 import (
 	"fmt"
+
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
 	"github.com/stakater/rhbk-operator/internal/constants"
 	v1 "k8s.io/api/apps/v1"

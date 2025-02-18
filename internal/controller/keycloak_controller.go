@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+
 	v12 "github.com/openshift/api/route/v1"
 	"github.com/redhat-cop/operator-utils/pkg/util/apis"
 	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"

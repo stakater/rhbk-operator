@@ -2,11 +2,12 @@ package resources
 
 import (
 	"fmt"
-	"github.com/stakater/rhbk-operator/api/v1alpha1"
-	v1 "k8s.io/api/core/v1"
 	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/stakater/rhbk-operator/api/v1alpha1"
+	v1 "k8s.io/api/core/v1"
 )
 
 const BusyboxImage = "registry.access.redhat.com/ubi8/ubi:8.10-1088"

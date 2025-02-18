@@ -3,14 +3,15 @@ package resources
 import (
 	"bytes"
 	"fmt"
+	"strconv"
+	"text/template"
+
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
 	"github.com/stakater/rhbk-operator/internal/constants"
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"strconv"
-	"text/template"
 )
 
 type ImportRealmSecret struct {

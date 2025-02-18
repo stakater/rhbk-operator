@@ -3,13 +3,14 @@ package resources
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+
 	"github.com/stakater/rhbk-operator/internal/constants"
 	v1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/kustomize/kstatus/status"
-	"strconv"
 )
 
 func FormatResource(obj interface{}) string {
