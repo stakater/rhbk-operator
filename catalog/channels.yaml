@@ -1,5 +1,5 @@
 schema: olm.channel
-package: uptimeguardian
+package: rhbk-operator
 name: preview
 entries:
-  - name: uptimeguardian.v0.0.1
+  - name: rhbk-operator.v0.0.1
