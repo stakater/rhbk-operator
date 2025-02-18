@@ -96,7 +96,7 @@ var _ = Describe("Keycloak Controller", func() {
 
 			By("Checking Statefulset resource has been created")
 			statefulSets := &appsv1.StatefulSetList{}
-			err = k8sClient.List(ctx, statefulSets, &client.ListOptions{
+			_ = k8sClient.List(ctx, statefulSets, &client.ListOptions{
 				LabelSelector: labels.SelectorFromSet(labels.Set{"app": "rhbk"}),
 			})
 			//Expect(err).NotTo(HaveOccurred())
@@ -119,7 +119,7 @@ var _ = Describe("Keycloak Controller", func() {
 
 			By("Checking Service resource has been created")
 			svc := &v1.Service{}
-			err = k8sClient.Get(ctx, types.NamespacedName{
+			_ = k8sClient.Get(ctx, types.NamespacedName{
 				Namespace: resourceNs,
 				Name:      resources.GetSvcName(keycloak),
 			}, svc)
@@ -141,7 +141,7 @@ var _ = Describe("Keycloak Controller", func() {
 
 			By("Checking Service resource has been created")
 			svc := &v1.Service{}
-			err = k8sClient.Get(ctx, types.NamespacedName{
+			_ = k8sClient.Get(ctx, types.NamespacedName{
 				Namespace: resourceNs,
 				Name:      resources.GetDiscoverySvcName(keycloak),
 			}, svc)
