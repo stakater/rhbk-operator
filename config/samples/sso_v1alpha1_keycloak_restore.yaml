@@ -5,7 +5,7 @@ metadata:
     app.kubernetes.io/name: rhbk-operator
     app.kubernetes.io/managed-by: kustomize
     realm.stakater.com/realm-import-sample: "true"
-  name: keycloak-sample
+  name: keycloak-restore
 spec:
   instances: 2
   admin:
@@ -20,19 +20,19 @@ spec:
   database:
     host:
       secret:
-        name: rhbk-pguser-rhbk
+        name: cpg-cluster-app
         key: host
     port:
       secret:
-        name: rhbk-pguser-rhbk
+        name: cpg-cluster-app
         key: port
     user:
       secret:
-        name: rhbk-pguser-rhbk
+        name: cpg-cluster-app
         key: user
     password:
       secret:
-        name: rhbk-pguser-rhbk
+        name: cpg-cluster-app
         key: password
 #  providers:
 #    - name: keycloak-metrics-spi-6.0.0.jar
