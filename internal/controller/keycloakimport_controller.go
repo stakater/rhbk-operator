@@ -18,14 +18,16 @@ package controller
 
 import (
 	"context"
-	"time"
-
+	"github.com/go-logr/logr"
 	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
+	"github.com/stakater/rhbk-operator/internal/constants"
 	"github.com/stakater/rhbk-operator/internal/resources"
 	v1 "k8s.io/api/apps/v1"
-	v12 "k8s.io/api/batch/v1"
+	v14 "k8s.io/api/batch/v1"
 	v13 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -34,12 +36,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // KeycloakImportReconciler reconciles a KeycloakImport object
 type KeycloakImportReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	logger logr.Logger
 }
 
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloakimports,verbs=get;list;watch;create;update;patch;delete
@@ -50,10 +54,11 @@ type KeycloakImportReconciler struct {
 //+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update
 
 func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+	r.logger = log.FromContext(ctx)
+	r.logger.Info("realm import...")
 
-	realmCR := &ssov1alpha1.KeycloakImport{}
-	err := r.Get(ctx, req.NamespacedName, realmCR)
+	cr := &ssov1alpha1.KeycloakImport{}
+	err := r.Get(ctx, req.NamespacedName, cr)
 
 	if errors.IsNotFound(err) {
 		return ctrl.Result{}, nil
@@ -61,15 +66,23 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
+	original := cr.DeepCopy()
+
 	keycloak := &ssov1alpha1.Keycloak{}
 	err = r.Get(ctx, client.ObjectKey{
-		Namespace: realmCR.Spec.KeycloakInstance.Namespace,
-		Name:      realmCR.Spec.KeycloakInstance.Name,
+		Namespace: cr.Spec.KeycloakInstance.Namespace,
+		Name:      cr.Spec.KeycloakInstance.Name,
 	}, keycloak)
 
 	if err != nil {
-		logger.Info("RHBK resource is does not exists")
-		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		cr.Status.Conditions.SetReady(v12.ConditionFalse, "Failed to fetch RHBK instance. "+err.Error())
+		return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
+	}
+
+	// Don't do anything if rhbk instance is not ready
+	if !keycloak.Status.Conditions.IsReady() {
+		cr.Status.Conditions.SetReady(v12.ConditionFalse, "RHBK instance not ready")
+		return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
 	}
 
 	statefulSet := &v1.StatefulSet{}
@@ -79,111 +92,154 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}, statefulSet)
 
 	if err != nil {
-		logger.Info("RHBK deployment is not yet ready")
-		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		cr.Status.Conditions.SetReady(v12.ConditionFalse, "RHBK deployment not ready. "+err.Error())
+		return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
 	}
 
-	// Fetch substitutions
-	substitutions := make(map[string]string)
-	for _, s := range realmCR.Spec.Substitutions {
-		secret := &v13.Secret{}
-		err = r.Get(ctx, client.ObjectKey{
-			Name:      s.Secret.Name,
-			Namespace: realmCR.Namespace,
-		}, secret)
-
-		if err != nil {
-			logger.Error(err, "error fetching secret")
-			return ctrl.Result{}, err
-		}
-
-		substitutions[s.Name] = string(secret.Data[s.Secret.Key])
+	importSecret := &resources.ImportRealmSecret{
+		ImportCR: cr,
+		Scheme:   r.Scheme,
+	}
+	err = importSecret.CreateOrUpdate(ctx, r.Client)
+	if err != nil {
+		cr.Status.Conditions.SetReady(v12.ConditionFalse, "Realm secret not ready. "+err.Error())
+		return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
 	}
 
-	realmSecret := &v13.Secret{}
-	err = r.Get(ctx, client.ObjectKey{
-		Name:      resources.GetImportJobSecretName(realmCR),
-		Namespace: statefulSet.Namespace,
-	}, realmSecret)
+	jobs := &v14.JobList{}
+	err = r.List(ctx, jobs, client.InNamespace(statefulSet.Namespace), client.MatchingLabelsSelector{
+		Selector: labels.SelectorFromSet(map[string]string{
+			constants.RHBKRealmImportLabel: cr.Name,
+		}),
+	})
 
 	if err != nil {
-		if errors.IsNotFound(err) {
-			sr := &resources.ImportRealmSecret{
-				ImportCR: realmCR,
-				Scheme:   r.Scheme,
-			}
-
-			err = sr.Build(substitutions)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-
-			err = r.Create(ctx, sr.Resource)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-
-		return ctrl.Result{}, err
+		cr.Status.Conditions.SetReady(v12.ConditionFalse, "Failed to fetch import job. "+err.Error())
+		return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
 	}
 
-	job := &v12.Job{}
-	err = r.Get(ctx, client.ObjectKey{
-		Name:      resources.GetImportJobName(realmCR),
-		Namespace: statefulSet.Namespace,
-	}, job)
-
-	if err != nil {
-		if errors.IsNotFound(err) {
-			job := &resources.ImportJob{
-				ImportCR:    realmCR,
-				Scheme:      r.Scheme,
-				StatefulSet: statefulSet,
-			}
-
-			err := job.Build()
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-
-			err = r.Create(ctx, job.Job)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
+	var found *v14.Job
+	for _, job := range jobs.Items {
+		if job.Labels[constants.RHBKRealmImportRevisionLabel] == importSecret.Resource.ResourceVersion {
+			found = &job
+			break
 		} else {
-			return ctrl.Result{}, err
+			err = r.Delete(ctx, &job, []client.DeleteOption{
+				client.PropagationPolicy(v12.DeletePropagationForeground),
+			}...)
+			if err != nil {
+				cr.Status.Conditions.SetReady(v12.ConditionFalse, "Failed to delete old job. "+err.Error())
+				return ctrl.Result{Requeue: true}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
+			}
 		}
 	}
 
-	if resources.IsJobCompleted(job) {
-		return ctrl.Result{}, r.RolloutChanges(ctx, statefulSet)
+	if found == nil {
+		importJob := &v14.Job{}
+		importJob, err = resources.Build(cr, statefulSet, importSecret.Resource.ResourceVersion, r.Scheme)
+		if err != nil {
+			cr.Status.Conditions.SetReady(v12.ConditionFalse, "Failed to build import job. "+err.Error())
+			return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
+		}
+
+		err = r.Create(ctx, importJob)
+		if err != nil {
+			cr.Status.Conditions.SetReady(v12.ConditionFalse, "Failed to create import job. "+err.Error())
+			return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
+		}
+
+		return ctrl.Result{}, nil
 	}
 
-	return ctrl.Result{}, nil
+	if !resources.MatchSet(statefulSet.Spec.Template.Annotations, map[string]string{
+		"statefulset.kubernetes.io/rollout": importSecret.Resource.ResourceVersion,
+	}) && resources.IsJobCompleted(found) {
+		return ctrl.Result{}, r.RolloutChanges(ctx, statefulSet, importSecret.Resource.ResourceVersion)
+	}
+
+	cr.Status.Conditions.SetReady(v12.ConditionTrue)
+	return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
 }
 
-func (r *KeycloakImportReconciler) RolloutChanges(ctx context.Context, statefulSet *v1.StatefulSet) error {
+func (r *KeycloakImportReconciler) RolloutChanges(ctx context.Context, statefulSet *v1.StatefulSet, revision string) error {
+	original := statefulSet.DeepCopy()
 	if statefulSet.Spec.Template.Annotations == nil {
 		statefulSet.Spec.Template.Annotations = make(map[string]string)
 	}
-	statefulSet.Spec.Template.Annotations["statefulset.kubernetes.io/rollout"] = time.Now().Format(time.RFC3339)
-	return r.Update(ctx, statefulSet)
+	statefulSet.Spec.Template.Annotations["statefulset.kubernetes.io/rollout"] = revision
+
+	return r.Patch(ctx, statefulSet, client.MergeFrom(original))
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *KeycloakImportReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&ssov1alpha1.KeycloakImport{}).
-		Owns(&v13.Secret{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
-		Owns(&v12.Job{}, builder.WithPredicates(predicate.Funcs{
+		For(&ssov1alpha1.KeycloakImport{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Owns(&v14.Job{}, builder.WithPredicates(predicate.Funcs{
+			CreateFunc: func(e event.TypedCreateEvent[client.Object]) bool {
+				return false
+			},
+			DeleteFunc: func(e event.TypedDeleteEvent[client.Object]) bool {
+				return false
+			},
 			UpdateFunc: func(e event.TypedUpdateEvent[client.Object]) bool {
-				old := e.ObjectOld.(*v12.Job)
-				recent := e.ObjectNew.(*v12.Job)
+				old := e.ObjectOld.(*v14.Job)
+				current := e.ObjectNew.(*v14.Job)
 
-				return !resources.IsJobCompleted(old) && resources.IsJobCompleted(recent)
+				return !resources.IsJobCompleted(old) && resources.IsJobCompleted(current)
 			},
 		})).
-		Watches(&ssov1alpha1.Keycloak{}, &handler.EnqueueRequestForObject{},
-			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Watches(&ssov1alpha1.Keycloak{}, handler.EnqueueRequestsFromMapFunc(r.handleRHBKChanged)).
+		Watches(&v13.Secret{}, handler.EnqueueRequestsFromMapFunc(r.handleSecretChanged)).
 		Complete(r)
+}
+
+func (r *KeycloakImportReconciler) handleSecretChanged(ctx context.Context, object client.Object) []reconcile.Request {
+	secret := object.(*v13.Secret)
+	imports := &ssov1alpha1.KeycloakImportList{}
+	err := r.List(ctx, imports)
+	if err != nil {
+		r.logger.Error(err, "unable to list RHBK instances")
+		return nil
+	}
+
+	var requests []reconcile.Request
+	for _, cr := range imports.Items {
+		if resources.MatchSet(secret.GetLabels(), map[string]string{
+			constants.RHBKRealmImportLabel: cr.Name,
+		}) || cr.Spec.HasSecretReference(secret.Name) {
+			requests = append(requests, reconcile.Request{
+				NamespacedName: client.ObjectKey{
+					Namespace: cr.Namespace,
+					Name:      cr.Name,
+				},
+			})
+		}
+	}
+
+	return requests
+}
+
+func (r *KeycloakImportReconciler) handleRHBKChanged(ctx context.Context, object client.Object) []reconcile.Request {
+	rhbk := object.(*ssov1alpha1.Keycloak)
+	imports := &ssov1alpha1.KeycloakImportList{}
+	err := r.List(ctx, imports)
+	if err != nil {
+		r.logger.Error(err, "unable to list RHBK instances")
+		return nil
+	}
+
+	var requests []reconcile.Request
+	for _, cr := range imports.Items {
+		if cr.Spec.KeycloakInstance.Name == rhbk.Name && cr.Spec.KeycloakInstance.Namespace == rhbk.Namespace {
+			requests = append(requests, reconcile.Request{
+				NamespacedName: client.ObjectKey{
+					Namespace: cr.Namespace,
+					Name:      cr.Name,
+				},
+			})
+		}
+	}
+
+	return requests
 }

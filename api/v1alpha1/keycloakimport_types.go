@@ -41,14 +41,29 @@ type KeycloakImportSpec struct {
 	OverrideIfExists bool `json:"overrideIfExists,omitempty"`
 }
 
+func (ki *KeycloakImportSpec) HasSecretReference(secretName string) bool {
+	for _, substitution := range ki.Substitutions {
+		if substitution.Secret.Name == secretName {
+			return true
+		}
+	}
+
+	return false
+}
+
 type KeycloakInstance struct {
 	Namespace string `json:"namespace"`
 	Name      string `json:"name"`
 }
 
+const (
+	RHBKReadiness string = "RHBKIsReady"
+)
+
 // KeycloakImportStatus defines the observed state of KeycloakImport
 type KeycloakImportStatus struct {
-	Version VersionedStatus `json:"version,omitempty"`
+	Version    VersionedStatus `json:"version,omitempty"`
+	Conditions `json:",inline"`
 }
 
 //+kubebuilder:object:root=true

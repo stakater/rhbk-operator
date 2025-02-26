@@ -8,15 +8,15 @@ metadata:
 spec:
   keycloakInstance:
     name: keycloak-sample
-    namespace: rhsso
+    namespace: rhbk
   substitutions:
     - name: DISPLAY_NAME
       secret:
-        name: test-realm-secret
-        key: displayName
+        name: realm-secret
+        key: secretKey1
   overrideIfExists: true
   json: |
     {
       "realm": "test-realm",
-      "displayName": "%.DISPLAY_NAME% changed again"
+      "displayName": "%.DISPLAY_NAME%"
     }

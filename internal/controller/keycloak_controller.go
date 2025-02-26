@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-
 	v12 "github.com/openshift/api/route/v1"
 	"github.com/redhat-cop/operator-utils/pkg/util/apis"
 	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
@@ -31,6 +30,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/kustomize/kstatus/status"
@@ -68,7 +68,7 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	err = serviceResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		return ctrl.Result{Requeue: true}, err
+		return ctrl.Result{}, err
 	}
 
 	routeResource := resources.RHBKRoute{
@@ -78,7 +78,7 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	err = routeResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		return ctrl.Result{Requeue: true}, err
+		return ctrl.Result{}, err
 	}
 
 	discoveryServiceResource := resources.RHBKDiscoveryService{
@@ -87,7 +87,7 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	err = discoveryServiceResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		return ctrl.Result{Requeue: true}, err
+		return ctrl.Result{}, err
 	}
 
 	statefulSetResource := &resources.RHBKStatefulSet{
@@ -97,36 +97,17 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	err = statefulSetResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		return ctrl.Result{Requeue: true}, err
-	}
-
-	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	println(resources.CheckStatus(statefulSetResource.Resource))
-
+	originalCR := cr.DeepCopy()
 	if resources.CheckStatus(statefulSetResource.Resource) == status.CurrentStatus {
-		cr.Status.Conditions = resources.AddOrReplaceCondition(v14.Condition{
-			Type:               apis.ReconcileSuccess,
-			Status:             v14.ConditionTrue,
-			ObservedGeneration: statefulSetResource.Resource.Generation,
-			LastTransitionTime: v14.Now(),
-			Reason:             apis.ReconcileSuccessReason,
-			Message:            "All resources are ready",
-		}, cr.Status.Conditions)
+		cr.Status.Conditions.UpdateCondition(apis.ReconcileSuccess, v14.ConditionTrue, apis.ReconcileSuccessReason, "All resources are ready")
 	} else {
-		cr.Status.Conditions = resources.AddOrReplaceCondition(v14.Condition{
-			Type:               apis.ReconcileSuccess,
-			Status:             v14.ConditionFalse,
-			ObservedGeneration: statefulSetResource.Resource.Generation,
-			LastTransitionTime: v14.Now(),
-			Reason:             "Reconciling",
-			Message:            "Waiting for resources to be ready",
-		}, cr.Status.Conditions)
+		cr.Status.Conditions.UpdateCondition(apis.ReconcileSuccess, v14.ConditionFalse, "Reconciling", "Waiting for resources to be ready")
 	}
 
-	return ctrl.Result{}, r.Status().Update(ctx, cr)
+	return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(originalCR))
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -135,6 +116,17 @@ func (r *KeycloakReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&ssov1alpha1.Keycloak{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&v1.Service{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&v12.Route{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
-		Owns(&v13.StatefulSet{}).
+		Owns(&v13.StatefulSet{}, builder.WithPredicates(predicate.Funcs{
+			CreateFunc: func(e event.TypedCreateEvent[client.Object]) bool {
+				return false
+			},
+			DeleteFunc: func(e event.TypedDeleteEvent[client.Object]) bool {
+				return true
+			},
+			UpdateFunc: func(e event.TypedUpdateEvent[client.Object]) bool {
+				current := e.ObjectNew.(*v13.StatefulSet)
+				return resources.CheckStatus(current) == status.CurrentStatus
+			},
+		})).
 		Complete(r)
 }

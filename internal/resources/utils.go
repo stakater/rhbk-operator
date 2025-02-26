@@ -3,11 +3,13 @@ package resources
 import (
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"strconv"
 
 	"github.com/stakater/rhbk-operator/internal/constants"
 	v1 "k8s.io/api/batch/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/kustomize/kstatus/status"
@@ -73,4 +75,18 @@ func CheckStatus(obj runtime.Object) status.Status {
 	}
 
 	return compute.Status
+}
+
+func MatchSet(set1 map[string]string, set2 map[string]string) bool {
+	selector := labels.SelectorFromSet(set2)
+	return selector.Matches(labels.Set(set1))
+}
+
+func GetHash(s string) (uint32, error) {
+	hasher := fnv.New32a()
+	_, err := hasher.Write([]byte(s))
+	if err != nil {
+		return 0, err
+	}
+	return hasher.Sum32(), nil
 }

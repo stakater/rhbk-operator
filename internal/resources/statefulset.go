@@ -104,7 +104,8 @@ func (ks *RHBKStatefulSet) Build() error {
 		},
 		Template: v12.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
-				Labels: labels,
+				Labels:      labels,
+				Annotations: ks.Resource.Spec.Template.Annotations,
 			},
 			Spec: v12.PodSpec{
 				InitContainers: GetInitContainer(ks.Keycloak),

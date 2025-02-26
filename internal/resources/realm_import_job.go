@@ -2,23 +2,16 @@ package resources
 
 import (
 	"fmt"
-
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
 	"github.com/stakater/rhbk-operator/internal/constants"
 	v1 "k8s.io/api/apps/v1"
 	v12 "k8s.io/api/batch/v1"
 	v14 "k8s.io/api/core/v1"
 	v13 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
-
-type ImportJob struct {
-	ImportCR    *v1alpha1.KeycloakImport
-	Scheme      *runtime.Scheme
-	StatefulSet *v1.StatefulSet
-	Job         *v12.Job
-}
 
 func GetImportJobName(cr *v1alpha1.KeycloakImport) string {
 	return fmt.Sprintf("%s-import", cr.Name)
@@ -32,8 +25,15 @@ func GetRealmMountPath(cr *v1alpha1.KeycloakImport) string {
 	return fmt.Sprintf("/mnt/realm-import/%s-realm.json", cr.Name)
 }
 
-func (j *ImportJob) Build() error {
-	template := j.StatefulSet.Spec.Template.DeepCopy()
+func GetImportJobSelectorLabel(importCrName string, secretRevision string) labels.Selector {
+	return labels.SelectorFromSet(map[string]string{
+		constants.RHBKRealmImportLabel:         importCrName,
+		constants.RHBKRealmImportRevisionLabel: secretRevision,
+	})
+}
+
+func Build(cr *v1alpha1.KeycloakImport, sts *v1.StatefulSet, revision string, scheme *runtime.Scheme) (*v12.Job, error) {
+	template := sts.Spec.Template.DeepCopy()
 	template.Labels["app"] = "realm-import-job"
 	kcContainer := &template.Spec.Containers[0]
 
@@ -61,7 +61,7 @@ func (j *ImportJob) Build() error {
 	}
 
 	// Setup ENV replacement
-	for _, substitution := range j.ImportCR.Spec.Substitutions {
+	for _, substitution := range cr.Spec.Substitutions {
 		next = append(next, v14.EnvVar{
 			Name: substitution.Name,
 			ValueFrom: &v14.EnvVarSource{
@@ -72,16 +72,16 @@ func (j *ImportJob) Build() error {
 
 	// Setup volume for mounting realm JSON
 	template.Spec.Volumes = append(template.Spec.Volumes, v14.Volume{
-		Name: GetImportJobSecretVolumeName(j.ImportCR),
+		Name: GetImportJobSecretVolumeName(cr),
 		VolumeSource: v14.VolumeSource{
 			Secret: &v14.SecretVolumeSource{
-				SecretName: GetImportJobSecretName(j.ImportCR),
+				SecretName: GetImportJobSecretName(cr),
 			},
 		},
 	})
 
 	kcContainer.VolumeMounts = append(kcContainer.VolumeMounts, v14.VolumeMount{
-		Name:      GetImportJobSecretVolumeName(j.ImportCR),
+		Name:      GetImportJobSecretVolumeName(cr),
 		ReadOnly:  true,
 		MountPath: "/mnt/realm-import",
 	})
@@ -102,20 +102,21 @@ func (j *ImportJob) Build() error {
 		"-c",
 		fmt.Sprintf(`%s/opt/keycloak/bin/kc.sh --verbose import --optimized --file='%s' --override=%t`,
 			buildProviders,
-			GetRealmMountPath(j.ImportCR),
-			j.ImportCR.Spec.OverrideIfExists),
+			GetRealmMountPath(cr),
+			cr.Spec.OverrideIfExists),
 	}
 
 	kcContainer.Command = cmd
 	kcContainer.Args = args
 
 	template.Spec.RestartPolicy = v14.RestartPolicyNever
-	j.Job = &v12.Job{
+	job := &v12.Job{
 		ObjectMeta: v13.ObjectMeta{
-			Name:      GetImportJobName(j.ImportCR),
-			Namespace: j.StatefulSet.Namespace,
+			Name:      GetImportJobName(cr),
+			Namespace: sts.Namespace,
 			Labels: map[string]string{
-				constants.RHBKRealmImportLabel: j.ImportCR.Name,
+				constants.RHBKRealmImportLabel:         cr.Name,
+				constants.RHBKRealmImportRevisionLabel: revision,
 			},
 		},
 		Spec: v12.JobSpec{
@@ -124,10 +125,10 @@ func (j *ImportJob) Build() error {
 		},
 	}
 
-	err := controllerutil.SetControllerReference(j.ImportCR, j.Job, j.Scheme)
+	err := controllerutil.SetControllerReference(cr, job, scheme)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return job, nil
 }
