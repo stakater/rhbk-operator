@@ -5,6 +5,7 @@ go 1.22.0
 toolchain go1.22.8
 
 require (
+	github.com/go-logr/logr v1.4.2
 	github.com/onsi/ginkgo/v2 v2.20.1
 	github.com/onsi/gomega v1.36.1
 	github.com/openshift/api v0.0.0-20241007111039-82e082220d91
@@ -13,7 +14,6 @@ require (
 	k8s.io/apimachinery v0.31.1
 	k8s.io/client-go v0.30.5
 	sigs.k8s.io/controller-runtime v0.18.5
-	sigs.k8s.io/kustomize/kstatus v0.0.2
 )
 
 replace (
@@ -29,7 +29,6 @@ require (
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect

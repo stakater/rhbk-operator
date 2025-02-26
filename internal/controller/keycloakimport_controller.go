@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-logr/logr"
 	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
 	"github.com/stakater/rhbk-operator/internal/constants"
@@ -50,12 +51,14 @@ type KeycloakImportReconciler struct {
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloakimports/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloakimports/finalizers,verbs=update
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloaks,verbs=get;list;watch
+//+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloaks/status,verbs=get
 //+kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update
 //+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update
+//+kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;update
 
 func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	r.logger = log.FromContext(ctx)
-	r.logger.Info("realm import...")
+	r.logger.Info("reconciling...")
 
 	cr := &ssov1alpha1.KeycloakImport{}
 	err := r.Get(ctx, req.NamespacedName, cr)
@@ -66,8 +69,6 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
-	original := cr.DeepCopy()
-
 	keycloak := &ssov1alpha1.Keycloak{}
 	err = r.Get(ctx, client.ObjectKey{
 		Namespace: cr.Spec.KeycloakInstance.Namespace,
@@ -75,14 +76,12 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}, keycloak)
 
 	if err != nil {
-		cr.Status.Conditions.SetReady(v12.ConditionFalse, "Failed to fetch RHBK instance. "+err.Error())
-		return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
+		return r.HandleError(ctx, cr, err, "Failed to fetch RHBK instance")
 	}
 
 	// Don't do anything if rhbk instance is not ready
 	if !keycloak.Status.Conditions.IsReady() {
-		cr.Status.Conditions.SetReady(v12.ConditionFalse, "RHBK instance not ready")
-		return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
+		return r.HandleError(ctx, cr, err, "RHBK instance not ready")
 	}
 
 	statefulSet := &v1.StatefulSet{}
@@ -92,8 +91,7 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}, statefulSet)
 
 	if err != nil {
-		cr.Status.Conditions.SetReady(v12.ConditionFalse, "RHBK deployment not ready. "+err.Error())
-		return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
+		return r.HandleError(ctx, cr, err, "RHBK deployment not ready")
 	}
 
 	importSecret := &resources.ImportRealmSecret{
@@ -102,8 +100,7 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 	err = importSecret.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		cr.Status.Conditions.SetReady(v12.ConditionFalse, "Realm secret not ready. "+err.Error())
-		return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
+		return r.HandleError(ctx, cr, err, "Realm secret not ready")
 	}
 
 	jobs := &v14.JobList{}
@@ -114,8 +111,7 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	})
 
 	if err != nil {
-		cr.Status.Conditions.SetReady(v12.ConditionFalse, "Failed to fetch import job. "+err.Error())
-		return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
+		return r.HandleError(ctx, cr, err, "Failed to fetch import job")
 	}
 
 	var found *v14.Job
@@ -128,27 +124,25 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				client.PropagationPolicy(v12.DeletePropagationForeground),
 			}...)
 			if err != nil {
-				cr.Status.Conditions.SetReady(v12.ConditionFalse, "Failed to delete old job. "+err.Error())
-				return ctrl.Result{Requeue: true}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
+				return r.HandleError(ctx, cr, err, "Failed to delete old job")
 			}
 		}
 	}
 
+	// If no job found create job and wait for next reconcile when job is completed
 	if found == nil {
 		importJob := &v14.Job{}
 		importJob, err = resources.Build(cr, statefulSet, importSecret.Resource.ResourceVersion, r.Scheme)
 		if err != nil {
-			cr.Status.Conditions.SetReady(v12.ConditionFalse, "Failed to build import job. "+err.Error())
-			return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
+			return r.HandleError(ctx, cr, err, "Failed to build import job")
 		}
 
 		err = r.Create(ctx, importJob)
 		if err != nil {
-			cr.Status.Conditions.SetReady(v12.ConditionFalse, "Failed to create import job. "+err.Error())
-			return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
+			return r.HandleError(ctx, cr, err, "Failed to create import job")
 		}
 
-		return ctrl.Result{}, nil
+		return r.HandleError(ctx, cr, err, "Wait for new import job to be ready")
 	}
 
 	if !resources.MatchSet(statefulSet.Spec.Template.Annotations, map[string]string{
@@ -157,6 +151,22 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, r.RolloutChanges(ctx, statefulSet, importSecret.Resource.ResourceVersion)
 	}
 
+	return r.HandleSuccess(ctx, cr)
+}
+
+func (r *KeycloakImportReconciler) HandleError(ctx context.Context, cr *ssov1alpha1.KeycloakImport, err error, msg string) (ctrl.Result, error) {
+	original := cr.DeepCopy()
+	if err != nil {
+		cr.Status.Conditions.SetReady(v12.ConditionFalse, fmt.Sprintf("%s. %s", msg, err.Error()))
+	} else {
+		cr.Status.Conditions.SetReady(v12.ConditionFalse, msg)
+	}
+
+	return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
+}
+
+func (r *KeycloakImportReconciler) HandleSuccess(ctx context.Context, cr *ssov1alpha1.KeycloakImport) (ctrl.Result, error) {
+	original := cr.DeepCopy()
 	cr.Status.Conditions.SetReady(v12.ConditionTrue)
 	return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
 }

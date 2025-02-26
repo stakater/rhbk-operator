@@ -18,8 +18,8 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	v12 "github.com/openshift/api/route/v1"
-	"github.com/redhat-cop/operator-utils/pkg/util/apis"
 	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
 	"github.com/stakater/rhbk-operator/internal/resources"
 	v13 "k8s.io/api/apps/v1"
@@ -33,7 +33,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/kustomize/kstatus/status"
 )
 
 type KeycloakReconciler struct {
@@ -46,7 +45,6 @@ type KeycloakReconciler struct {
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloaks/finalizers,verbs=update
 //+kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update
 //+kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update
-//+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update
 //+kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=get;list;watch;create;update
 
 func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -68,7 +66,7 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	err = serviceResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		return ctrl.Result{}, err
+		return r.HandleError(ctx, cr, err, "Service setup not ready")
 	}
 
 	routeResource := resources.RHBKRoute{
@@ -78,7 +76,7 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	err = routeResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		return ctrl.Result{}, err
+		return r.HandleError(ctx, cr, err, "route setup not ready")
 	}
 
 	discoveryServiceResource := resources.RHBKDiscoveryService{
@@ -87,7 +85,7 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	err = discoveryServiceResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		return ctrl.Result{}, err
+		return r.HandleError(ctx, cr, err, "Discovery service setup not ready")
 	}
 
 	statefulSetResource := &resources.RHBKStatefulSet{
@@ -97,17 +95,31 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	err = statefulSetResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		return ctrl.Result{}, err
+		return r.HandleError(ctx, cr, err, "Deployment setup not ready")
 	}
 
-	originalCR := cr.DeepCopy()
-	if resources.CheckStatus(statefulSetResource.Resource) == status.CurrentStatus {
-		cr.Status.Conditions.UpdateCondition(apis.ReconcileSuccess, v14.ConditionTrue, apis.ReconcileSuccessReason, "All resources are ready")
+	if resources.IsStatefulSetReady(statefulSetResource.Resource) {
+		return r.HandleSuccess(ctx, cr)
 	} else {
-		cr.Status.Conditions.UpdateCondition(apis.ReconcileSuccess, v14.ConditionFalse, "Reconciling", "Waiting for resources to be ready")
+		return r.HandleError(ctx, cr, nil, "Waiting for resources to be ready")
 	}
+}
 
-	return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(originalCR))
+func (r *KeycloakReconciler) HandleError(ctx context.Context, cr *ssov1alpha1.Keycloak, err error, msg string) (ctrl.Result, error) {
+	original := cr.DeepCopy()
+
+	if err != nil {
+		cr.Status.Conditions.SetReady(v14.ConditionFalse, fmt.Sprintf("%s. %s", msg, err.Error()))
+	} else {
+		cr.Status.Conditions.SetReady(v14.ConditionFalse, msg)
+	}
+	return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
+}
+
+func (r *KeycloakReconciler) HandleSuccess(ctx context.Context, cr *ssov1alpha1.Keycloak) (ctrl.Result, error) {
+	original := cr.DeepCopy()
+	cr.Status.Conditions.SetReady(v14.ConditionTrue)
+	return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -124,8 +136,10 @@ func (r *KeycloakReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				return true
 			},
 			UpdateFunc: func(e event.TypedUpdateEvent[client.Object]) bool {
+				old := e.ObjectOld.(*v13.StatefulSet)
 				current := e.ObjectNew.(*v13.StatefulSet)
-				return resources.CheckStatus(current) == status.CurrentStatus
+
+				return !resources.IsStatefulSetReady(old) && resources.IsStatefulSetReady(current)
 			},
 		})).
 		Complete(r)
