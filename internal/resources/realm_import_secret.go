@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strconv"
+	"text/template"
+
 	"github.com/stakater/rhbk-operator/internal/constants"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strconv"
-	"text/template"
 
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"

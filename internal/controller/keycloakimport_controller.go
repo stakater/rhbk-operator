@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+
 	"github.com/go-logr/logr"
 	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
 	"github.com/stakater/rhbk-operator/internal/constants"
@@ -131,8 +132,7 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// If no job found create job and wait for next reconcile when job is completed
 	if found == nil {
-		importJob := &v14.Job{}
-		importJob, err = resources.Build(cr, statefulSet, importSecret.Resource.ResourceVersion, r.Scheme)
+		importJob, err := resources.Build(cr, statefulSet, importSecret.Resource.ResourceVersion, r.Scheme)
 		if err != nil {
 			return r.HandleError(ctx, cr, err, "Failed to build import job")
 		}

@@ -2,13 +2,13 @@ package resources
 
 import (
 	"fmt"
+
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
 	"github.com/stakater/rhbk-operator/internal/constants"
 	v1 "k8s.io/api/apps/v1"
 	v12 "k8s.io/api/batch/v1"
 	v14 "k8s.io/api/core/v1"
 	v13 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -23,13 +23,6 @@ func GetImportJobSecretVolumeName(cr *v1alpha1.KeycloakImport) string {
 
 func GetRealmMountPath(cr *v1alpha1.KeycloakImport) string {
 	return fmt.Sprintf("/mnt/realm-import/%s-realm.json", cr.Name)
-}
-
-func GetImportJobSelectorLabel(importCrName string, secretRevision string) labels.Selector {
-	return labels.SelectorFromSet(map[string]string{
-		constants.RHBKRealmImportLabel:         importCrName,
-		constants.RHBKRealmImportRevisionLabel: secretRevision,
-	})
 }
 
 func Build(cr *v1alpha1.KeycloakImport, sts *v1.StatefulSet, revision string, scheme *runtime.Scheme) (*v12.Job, error) {

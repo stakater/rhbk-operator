@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+
 	v12 "github.com/openshift/api/route/v1"
 	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
 	"github.com/stakater/rhbk-operator/internal/resources"

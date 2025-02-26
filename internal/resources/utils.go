@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"strconv"
+
 	v12 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"strconv"
 
 	"github.com/stakater/rhbk-operator/internal/constants"
 	v1 "k8s.io/api/batch/v1"
