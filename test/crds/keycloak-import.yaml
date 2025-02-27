@@ -1,0 +1,19 @@
+apiVersion: sso.stakater.com/v1alpha1
+kind: KeycloakImport
+metadata:
+  name: realm-import
+spec:
+  keycloakInstance:
+    name: keycloak
+    namespace: rhbk
+  substitutions:
+    - name: DISPLAY_NAME
+      secret:
+        name: realm-secret
+        key: secretKey1
+  overrideIfExists: true
+  json: |
+    {
+      "realm": "test-realm",
+      "displayName": "%.DISPLAY_NAME%"
+    }

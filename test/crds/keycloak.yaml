@@ -1,0 +1,36 @@
+apiVersion: sso.stakater.com/v1alpha1
+kind: Keycloak
+metadata:
+  name: keycloak
+spec:
+  instances: 2
+  admin:
+    username:
+      secret:
+        name: admin-secrets
+        key: username
+    password:
+      secret:
+        name: admin-secrets
+        key: password
+  database:
+    host:
+      secret:
+        name: rhbk-pguser-rhbk
+        key: host
+    port:
+      secret:
+        name: rhbk-pguser-rhbk
+        key: port
+    user:
+      secret:
+        name: rhbk-pguser-rhbk
+        key: user
+    password:
+      secret:
+        name: rhbk-pguser-rhbk
+        key: password
+  providers:
+    - name: keycloak-metrics-spi-6.0.0.jar
+      url:
+        value: "https://stakater.com/test-spi.jar"

@@ -6,6 +6,8 @@ import (
 	"hash/fnv"
 	"strconv"
 
+	v13 "k8s.io/api/core/v1"
+
 	v12 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
@@ -35,7 +37,7 @@ func IsJobCompleted(job *v1.Job) bool {
 			continue
 		}
 
-		return condition.Status == "True"
+		return condition.Status == v13.ConditionTrue
 	}
 
 	return false
@@ -61,4 +63,11 @@ func GetHash(s string) (uint32, error) {
 		return 0, err
 	}
 	return hasher.Sum32(), nil
+}
+
+func GetOwnerLabels(ownerName string, ownerNamespace string) map[string]string {
+	return map[string]string{
+		constants.RHBKImportOwnerLabel:     ownerName,
+		constants.RHBKImportNamespaceLabel: ownerNamespace,
+	}
 }

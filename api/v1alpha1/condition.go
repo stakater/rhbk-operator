@@ -43,3 +43,12 @@ func (s *Conditions) IsReady() bool {
 
 	return c.Status == metav1.ConditionTrue
 }
+
+func (s *Conditions) ConditionMsg(ct string) string {
+	c, exists := apis.GetCondition(ct, s.Conditions)
+	if !exists {
+		return ""
+	}
+
+	return c.Message
+}

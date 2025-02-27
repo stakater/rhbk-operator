@@ -9,8 +9,6 @@ import (
 	v12 "k8s.io/api/batch/v1"
 	v14 "k8s.io/api/core/v1"
 	v13 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func GetImportJobName(cr *v1alpha1.KeycloakImport) string {
@@ -25,9 +23,17 @@ func GetRealmMountPath(cr *v1alpha1.KeycloakImport) string {
 	return fmt.Sprintf("/mnt/realm-import/%s-realm.json", cr.Name)
 }
 
-func Build(cr *v1alpha1.KeycloakImport, sts *v1.StatefulSet, revision string, scheme *runtime.Scheme) (*v12.Job, error) {
+type RealmImportJob struct {
+	KeycloakImport *v1alpha1.KeycloakImport
+	StatefulSet    *v1.StatefulSet
+}
+
+func Build(cr *v1alpha1.KeycloakImport, sts *v1.StatefulSet, revision string) (*v12.Job, error) {
+	ownerLabels := GetOwnerLabels(cr.Name, cr.Namespace)
+	ownerLabels[constants.RHBKImportRevisionLabel] = revision
+
 	template := sts.Spec.Template.DeepCopy()
-	template.Labels["app"] = "realm-import-job"
+	template.Labels = ownerLabels
 	kcContainer := &template.Spec.Containers[0]
 
 	toModify := map[string]string{
@@ -51,16 +57,6 @@ func Build(cr *v1alpha1.KeycloakImport, sts *v1.StatefulSet, revision string, sc
 		} else {
 			next = append(next, v)
 		}
-	}
-
-	// Setup ENV replacement
-	for _, substitution := range cr.Spec.Substitutions {
-		next = append(next, v14.EnvVar{
-			Name: substitution.Name,
-			ValueFrom: &v14.EnvVarSource{
-				SecretKeyRef: substitution.Secret,
-			},
-		})
 	}
 
 	// Setup volume for mounting realm JSON
@@ -107,20 +103,12 @@ func Build(cr *v1alpha1.KeycloakImport, sts *v1.StatefulSet, revision string, sc
 		ObjectMeta: v13.ObjectMeta{
 			Name:      GetImportJobName(cr),
 			Namespace: sts.Namespace,
-			Labels: map[string]string{
-				constants.RHBKRealmImportLabel:         cr.Name,
-				constants.RHBKRealmImportRevisionLabel: revision,
-			},
+			Labels:    ownerLabels,
 		},
 		Spec: v12.JobSpec{
 			Template:     *template,
 			BackoffLimit: &[]int32{1}[0],
 		},
-	}
-
-	err := controllerutil.SetControllerReference(cr, job, scheme)
-	if err != nil {
-		return nil, err
 	}
 
 	return job, nil

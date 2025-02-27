@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"text/template"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/stakater/rhbk-operator/internal/constants"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -36,7 +38,7 @@ func (s *ImportRealmSecret) CreateOrUpdate(ctx context.Context, c client.Client)
 	s.Resource = &v1.Secret{
 		ObjectMeta: v12.ObjectMeta{
 			Name:      GetImportJobSecretName(s.ImportCR),
-			Namespace: s.ImportCR.Namespace,
+			Namespace: s.ImportCR.Spec.KeycloakInstance.Namespace,
 		},
 	}
 
@@ -66,15 +68,15 @@ func (s *ImportRealmSecret) MutateFn() error {
 		return err
 	}
 
-	s.Resource.Labels = map[string]string{
-		constants.RHBKWatchedResourceLabel: strconv.FormatBool(true),
-	}
+	ownerLabels := GetOwnerLabels(s.ImportCR.Name, s.ImportCR.Namespace)
+	ownerLabels[constants.RHBKWatchedResourceLabel] = strconv.FormatBool(true)
+	s.Resource.Labels = ownerLabels
 
 	s.Resource.Data = map[string][]byte{
 		GetImportJobSecretRealmName(s.ImportCR): realm,
 	}
 
-	return controllerutil.SetControllerReference(s.ImportCR, s.Resource, s.Scheme)
+	return nil
 }
 
 func expandTemplate(t string, substitutions map[string]string) ([]byte, error) {
@@ -89,4 +91,20 @@ func expandTemplate(t string, substitutions map[string]string) ([]byte, error) {
 	}
 
 	return results.Bytes(), nil
+}
+
+func FindAllImportSecrets(ctx context.Context, cr *v1alpha1.KeycloakImport, c client.Client) (*v1.SecretList, error) {
+	kcNamespace := cr.Spec.KeycloakInstance.Namespace
+	ownerLabels := labels.SelectorFromSet(GetOwnerLabels(cr.Name, cr.Namespace))
+
+	secrets := &v1.SecretList{}
+	err := c.List(ctx, secrets, client.InNamespace(kcNamespace), client.MatchingLabelsSelector{
+		Selector: ownerLabels,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return secrets, nil
 }

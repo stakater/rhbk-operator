@@ -1,5 +1,6 @@
 package constants
 
 const RHBKWatchedResourceLabel = "sso.stakater.com/watched"
-const RHBKRealmImportLabel = "realm.stakater.com/import"
-const RHBKRealmImportRevisionLabel = "realm.stakater.com/import-rev"
+const RHBKImportOwnerLabel = "realm.stakater.com/owner"
+const RHBKImportNamespaceLabel = "realm.stakater.com/namepsace"
+const RHBKImportRevisionLabel = "realm.stakater.com/revision"

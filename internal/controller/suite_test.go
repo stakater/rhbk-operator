@@ -24,6 +24,8 @@ import (
 	"runtime"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+
 	//+kubebuilder:scaffold:imports
 
 	. "github.com/onsi/ginkgo/v2"
@@ -94,14 +96,14 @@ var _ = BeforeSuite(func() {
 
 	err = k8sClient.Create(context.Background(), &v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "rhsso",
+			Name: "rhbk-instance",
 		},
 	})
 	Expect(err).NotTo(HaveOccurred())
 
 	err = k8sClient.Create(context.Background(), &v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "rhsso-realm",
+			Name: "rhbk-import",
 		},
 	})
 	Expect(err).NotTo(HaveOccurred())
@@ -112,3 +114,24 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })
+
+func DeleteIfExist(ctx context.Context, obj client.Object) {
+	err := k8sClient.Get(ctx, client.ObjectKeyFromObject(obj), obj)
+	if err != nil && errors.IsNotFound(err) {
+		return
+	}
+
+	obj.SetFinalizers(nil)
+	Expect(k8sClient.Update(ctx, obj)).NotTo(HaveOccurred())
+	Expect(k8sClient.Delete(ctx, obj, client.PropagationPolicy(metav1.DeletePropagationBackground))).ToNot(HaveOccurred())
+}
+
+func HasOwnerRef(parent client.Object, child client.Object) bool {
+	for _, reference := range child.GetOwnerReferences() {
+		if reference.UID == parent.GetUID() {
+			return true
+		}
+	}
+
+	return false
+}
