@@ -91,7 +91,7 @@ var _ = Describe("Keycloak Controller", func() {
 			Expect(statefulSet.Spec.Template.Spec.InitContainers).To(HaveLen(1))
 			Expect(statefulSet.Spec.Template.Spec.InitContainers[0].Args).To(Equal([]string{
 				"-c",
-				"mkdir -p /opt/keycloak/providers; curl -LJ --show-error --capath /var/run/secrets/kubernetes.io -o /opt/keycloak/providers/keycloak-metrics-spi-6.0.0.jar $(KEYCLOAK_METRICS_SPI_6_0_0_JAR)",
+				"mkdir -p /opt/keycloak/providers; curl -LJ --show-error --capath conf/truststores -o /opt/keycloak/providers/keycloak-metrics-spi-6.0.0.jar $(KEYCLOAK_METRICS_SPI_6_0_0_JAR)",
 			}))
 		})
 

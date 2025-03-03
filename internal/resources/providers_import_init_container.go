@@ -2,6 +2,7 @@ package resources
 
 import (
 	"fmt"
+	"github.com/stakater/rhbk-operator/internal/constants"
 	"regexp"
 	"strings"
 	"unicode"
@@ -18,7 +19,7 @@ func GetInitContainer(cr *v1alpha1.Keycloak) []v1.Container {
 		return nil
 	}
 
-	runArg := fmt.Sprintf("mkdir -p %s; curl -LJ --show-error --capath /var/run/secrets/kubernetes.io", ProvidersPATH)
+	runArg := fmt.Sprintf("mkdir -p %s; curl -LJ --show-error --capath %s", ProvidersPATH, constants.TrustedCaVolumeMountPath)
 	downloadContainer := v1.Container{
 		Name:  "fetch",
 		Image: BusyboxImage,
@@ -33,6 +34,10 @@ func GetInitContainer(cr *v1alpha1.Keycloak) []v1.Container {
 			{
 				Name:      "providers",
 				MountPath: ProvidersPATH,
+			},
+			{
+				Name:      constants.TrustedCaVolume,
+				MountPath: constants.TrustedCaVolumeMountPath,
 			},
 		},
 	}

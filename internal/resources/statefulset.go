@@ -3,6 +3,7 @@ package resources
 import (
 	"context"
 	"fmt"
+	"github.com/stakater/rhbk-operator/internal/constants"
 	"strconv"
 
 	v1 "k8s.io/api/apps/v1"
@@ -30,9 +31,9 @@ func GetStatefulSetName(cr *v1alpha1.Keycloak) string {
 	return cr.Name
 }
 
-func (ks *RHBKStatefulSet) GetDBEnvs() []v12.EnvVar {
+func (ks *RHBKStatefulSet) DecorateENV(vars []v12.EnvVar) []v12.EnvVar {
 	if ks.Keycloak.Spec.Database != nil {
-		return []v12.EnvVar{
+		vars = append(vars, []v12.EnvVar{
 			{
 				Name:  "KC_DB",
 				Value: "postgres",
@@ -73,10 +74,42 @@ func (ks *RHBKStatefulSet) GetDBEnvs() []v12.EnvVar {
 				Name:  "KC_DB_POOL_MAX_SIZE",
 				Value: "30",
 			},
-		}
+		}...)
 	}
 
-	return []v12.EnvVar{}
+	return vars
+}
+
+func (ks *RHBKStatefulSet) DecorateVolume(vl []v12.Volume) []v12.Volume {
+	if ks.Keycloak.Spec.TrustedCABundles != nil {
+		vl = append(vl, v12.Volume{
+			Name: constants.TrustedCaVolume,
+			VolumeSource: v12.VolumeSource{
+				ConfigMap: &v12.ConfigMapVolumeSource{
+					LocalObjectReference: *ks.Keycloak.Spec.TrustedCABundles,
+					Optional:             &[]bool{true}[0],
+					DefaultMode:          &[]int32{420}[0],
+				},
+			},
+		})
+	} else {
+		vl = append(vl, v12.Volume{
+			Name: constants.TrustedCaVolume,
+			VolumeSource: v12.VolumeSource{
+				EmptyDir: &v12.EmptyDirVolumeSource{},
+			},
+		})
+	}
+
+	return vl
+}
+
+func (ks *RHBKStatefulSet) DecorateVolumeMounts(mounts []v12.VolumeMount) []v12.VolumeMount {
+	if ks.Keycloak.Spec.TrustedCABundles != nil {
+
+	}
+
+	return mounts
 }
 
 func (ks *RHBKStatefulSet) Build() error {
@@ -111,7 +144,7 @@ func (ks *RHBKStatefulSet) Build() error {
 				InitContainers: GetInitContainer(ks.Keycloak),
 				Containers: []v12.Container{
 					{
-						Name:            "rhbk",
+						Name:            constants.RHBKContainerName,
 						Image:           RHBKImage,
 						ImagePullPolicy: v12.PullAlways,
 						Args: []string{
@@ -131,7 +164,7 @@ func (ks *RHBKStatefulSet) Build() error {
 								Protocol:      v12.ProtocolTCP,
 							},
 						},
-						Env: append([]v12.EnvVar{
+						Env: ks.DecorateENV([]v12.EnvVar{
 							{
 								Name:  "KC_HOSTNAME",
 								Value: ks.HostName,
@@ -178,7 +211,7 @@ func (ks *RHBKStatefulSet) Build() error {
 							},
 							{
 								Name:  "KC_TRUSTSTORE_PATHS",
-								Value: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt,/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt",
+								Value: fmt.Sprintf("conf/truststores,/var/run/secrets/kubernetes.io/serviceaccount/ca.crt,/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"),
 							},
 							{
 								Name:  "KC_TRACING_SERVICE_NAME",
@@ -188,7 +221,7 @@ func (ks *RHBKStatefulSet) Build() error {
 								Name:  "KC_TRACING_RESOURCE_ATTRIBUTES",
 								Value: fmt.Sprintf("k8s.namespace.name=%s", ks.Keycloak.Namespace),
 							},
-						}, ks.GetDBEnvs()...),
+						}),
 						Resources: v12.ResourceRequirements{
 							Requests: v12.ResourceList{
 								v12.ResourceMemory: resource.MustParse("1700Mi"),
@@ -236,51 +269,43 @@ func (ks *RHBKStatefulSet) Build() error {
 							PeriodSeconds:    1,
 							FailureThreshold: 600,
 						},
-						VolumeMounts: []v12.VolumeMount{
-							{
-								Name:      "keycloak-tls-certificates",
-								MountPath: "/mnt/certificates",
+						VolumeMounts: ks.DecorateVolumeMounts(
+							[]v12.VolumeMount{
+								{
+									Name:      "keycloak-tls-certificates",
+									MountPath: "/mnt/certificates",
+								},
+								{
+									Name:      "providers",
+									MountPath: ProvidersPATH,
+								},
+								{
+									Name:      constants.TrustedCaVolume,
+									MountPath: constants.TrustedCaVolumeMountPath,
+									ReadOnly:  true,
+								},
+							}),
+					},
+				},
+				Volumes: ks.DecorateVolume(
+					[]v12.Volume{
+						{
+							Name: "keycloak-tls-certificates",
+							VolumeSource: v12.VolumeSource{
+								Secret: &v12.SecretVolumeSource{
+									SecretName:  GetTLSSecretName(ks.Keycloak),
+									DefaultMode: &[]int32{420}[0],
+									Optional:    &[]bool{false}[0],
+								},
 							},
-							{
-								Name:      "providers",
-								MountPath: ProvidersPATH,
+						},
+						{
+							Name: "providers",
+							VolumeSource: v12.VolumeSource{
+								EmptyDir: &v12.EmptyDirVolumeSource{},
 							},
 						},
-					},
-				},
-				Volumes: []v12.Volume{
-					{
-						Name: "keycloak-tls-certificates",
-						VolumeSource: v12.VolumeSource{
-							Secret: &v12.SecretVolumeSource{
-								SecretName:  GetTLSSecretName(ks.Keycloak),
-								DefaultMode: &[]int32{420}[0],
-								Optional:    &[]bool{false}[0],
-							},
-						},
-					},
-					{
-						Name: "providers",
-						VolumeSource: v12.VolumeSource{
-							EmptyDir: &v12.EmptyDirVolumeSource{},
-						},
-					},
-				},
-			},
-		},
-		VolumeClaimTemplates: []v12.PersistentVolumeClaim{
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "providers",
-				},
-				Spec: v12.PersistentVolumeClaimSpec{
-					AccessModes: []v12.PersistentVolumeAccessMode{v12.ReadWriteOnce},
-					Resources: v12.VolumeResourceRequirements{
-						Requests: v12.ResourceList{
-							v12.ResourceStorage: resource.MustParse("1Gi"),
-						},
-					},
-				},
+					}),
 			},
 		},
 	}

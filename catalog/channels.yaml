@@ -2,6 +2,8 @@ schema: olm.channel
 package: rhbk-operator
 name: preview
 entries:
+  - name: rhbk-operator.v0.0.4
+    replaces: rhbk-operator.v0.0.3
   - name: rhbk-operator.v0.0.3
     replaces: rhbk-operator.v0.0.2
   - name: rhbk-operator.v0.0.2

@@ -40,8 +40,8 @@ type KeycloakSpec struct {
 	Instances *int32 `json:"instances"`
 
 	// +optional
-	// Truststore configurations
-	Truststore []Truststore `json:"truststore,omitempty"`
+	// Trusted CA bundle from configmap
+	TrustedCABundles *v1.LocalObjectReference `json:"trustedCABundles,omitempty"`
 
 	// +optional
 	// Admin credentials
@@ -60,11 +60,6 @@ type Provider struct {
 type AdminUser struct {
 	Username SecretOption `json:"username,omitempty"`
 	Password SecretOption `json:"password,omitempty"`
-}
-
-type Truststore struct {
-	File     SecretOption          `json:"file,omitempty"`
-	Password *v1.SecretKeySelector `json:"password,omitempty"`
 }
 
 type Features struct {
