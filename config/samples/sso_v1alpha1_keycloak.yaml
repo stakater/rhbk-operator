@@ -37,6 +37,6 @@ spec:
   trustedCABundles:
     name: openshift-service-ca.crt
   providers:
-    - name: spi-keycloak-emailnotification-1.0.1.jar
+    - name: custom-spi.jar
       url:
-        value: "https://github.com/zene22/keycloak-spi-example/releases/download/V1.0.1/spi-keycloak-emailnotification-1.0.1.jar"
+        value: "https://github.com/example/custom-spi.jar"
