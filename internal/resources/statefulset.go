@@ -3,8 +3,9 @@ package resources
 import (
 	"context"
 	"fmt"
-	"github.com/stakater/rhbk-operator/internal/constants"
 	"strconv"
+
+	"github.com/stakater/rhbk-operator/internal/constants"
 
 	v1 "k8s.io/api/apps/v1"
 	v12 "k8s.io/api/core/v1"
@@ -105,10 +106,6 @@ func (ks *RHBKStatefulSet) DecorateVolume(vl []v12.Volume) []v12.Volume {
 }
 
 func (ks *RHBKStatefulSet) DecorateVolumeMounts(mounts []v12.VolumeMount) []v12.VolumeMount {
-	if ks.Keycloak.Spec.TrustedCABundles != nil {
-
-	}
-
 	return mounts
 }
 
@@ -211,7 +208,7 @@ func (ks *RHBKStatefulSet) Build() error {
 							},
 							{
 								Name:  "KC_TRUSTSTORE_PATHS",
-								Value: fmt.Sprintf("conf/truststores,/var/run/secrets/kubernetes.io/serviceaccount/ca.crt,/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"),
+								Value: "conf/truststores,/var/run/secrets/kubernetes.io/serviceaccount/ca.crt,/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt",
 							},
 							{
 								Name:  "KC_TRACING_SERVICE_NAME",

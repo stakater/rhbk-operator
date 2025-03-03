@@ -2,10 +2,11 @@ package resources
 
 import (
 	"fmt"
-	"github.com/stakater/rhbk-operator/internal/constants"
 	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/stakater/rhbk-operator/internal/constants"
 
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
