@@ -20,7 +20,7 @@ func GetInitContainer(cr *v1alpha1.Keycloak) []v1.Container {
 		return nil
 	}
 
-	runArg := fmt.Sprintf("mkdir -p %s; curl -LJ --show-error --capath %s", ProvidersPATH, constants.TrustedCaVolumeMountPath)
+	runArg := fmt.Sprintf("mkdir -p %s; curl -LJ --show-error --cacert %s/ca-bundle.crt", ProvidersPATH, constants.TrustedCaVolumeMountPath)
 	downloadContainer := v1.Container{
 		Name:  "fetch",
 		Image: BusyboxImage,
