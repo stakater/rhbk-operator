@@ -20,6 +20,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/stakater/rhbk-operator/internal/resources/monitoring"
+
+	v15 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/stakater/rhbk-operator/internal/resources/rhbk"
+
 	v12 "github.com/openshift/api/route/v1"
 	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
 	"github.com/stakater/rhbk-operator/internal/resources"
@@ -47,6 +52,7 @@ type KeycloakReconciler struct {
 //+kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update
 //+kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update
 //+kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=get;list;watch;create;update
+// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=get;list;create;update;delete;watch
 
 func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).WithName("keycloak-controller")
@@ -61,7 +67,7 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	serviceResource := resources.RHBKService{
+	serviceResource := rhbk.RHBKService{
 		Keycloak: cr,
 		Scheme:   r.Scheme,
 	}
@@ -70,7 +76,7 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return r.HandleError(ctx, cr, err, "Service setup not ready")
 	}
 
-	routeResource := resources.RHBKRoute{
+	routeResource := rhbk.RHBKRoute{
 		Keycloak: cr,
 		Scheme:   r.Scheme,
 	}
@@ -80,7 +86,17 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return r.HandleError(ctx, cr, err, "route setup not ready")
 	}
 
-	discoveryServiceResource := resources.RHBKDiscoveryService{
+	statefulSetResource := &rhbk.RHBKStatefulSet{
+		Keycloak: cr,
+		HostName: routeResource.Resource.Spec.Host,
+		Scheme:   r.Scheme,
+	}
+	err = statefulSetResource.CreateOrUpdate(ctx, r.Client)
+	if err != nil {
+		return r.HandleError(ctx, cr, err, "Deployment setup not ready")
+	}
+
+	discoveryServiceResource := rhbk.RHBKDiscoveryService{
 		Keycloak: cr,
 		Scheme:   r.Scheme,
 	}
@@ -89,14 +105,10 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return r.HandleError(ctx, cr, err, "Discovery service setup not ready")
 	}
 
-	statefulSetResource := &resources.RHBKStatefulSet{
-		Keycloak: cr,
-		HostName: routeResource.Resource.Spec.Host,
-		Scheme:   r.Scheme,
-	}
-	err = statefulSetResource.CreateOrUpdate(ctx, r.Client)
+	serviceMonitorResource := monitoring.NewServiceMonitor(cr, r.Scheme)
+	err = serviceMonitorResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
-		return r.HandleError(ctx, cr, err, "Deployment setup not ready")
+		return r.HandleError(ctx, cr, err, "Service monitor setup not ready")
 	}
 
 	if resources.IsStatefulSetReady(statefulSetResource.Resource) {
@@ -129,6 +141,7 @@ func (r *KeycloakReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&ssov1alpha1.Keycloak{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&v1.Service{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&v12.Route{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Owns(&v15.ServiceMonitor{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&v13.StatefulSet{}, builder.WithPredicates(predicate.Funcs{
 			CreateFunc: func(e event.TypedCreateEvent[client.Object]) bool {
 				return false

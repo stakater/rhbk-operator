@@ -1,7 +1,9 @@
-package resources
+package rhbk
 
 import (
 	"context"
+
+	"github.com/stakater/rhbk-operator/internal/resources"
 
 	v1 "github.com/openshift/api/route/v1"
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
@@ -19,10 +21,10 @@ type RHBKRoute struct {
 }
 
 func (s *RHBKRoute) Build() error {
-	s.Resource.Labels = map[string]string{
-		"app": "rhbk",
-	}
+	defaultLabels := map[string]string{}
+	resources.DecorateDefaultLabels(defaultLabels)
 
+	s.Resource.Labels = defaultLabels
 	s.Resource.Spec = v1.RouteSpec{
 		To: v1.RouteTargetReference{
 			Kind: "Service",

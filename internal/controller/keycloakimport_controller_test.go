@@ -19,6 +19,9 @@ package controller
 import (
 	"context"
 
+	"github.com/stakater/rhbk-operator/internal/resources/realm"
+	"github.com/stakater/rhbk-operator/internal/resources/rhbk"
+
 	"github.com/redhat-cop/operator-utils/pkg/util/apis"
 	"github.com/stakater/rhbk-operator/internal/constants"
 	"github.com/stakater/rhbk-operator/internal/resources"
@@ -128,9 +131,10 @@ var _ = Describe("KeycloakImport Controller", func() {
 			kcKey := kclient.ObjectKeyFromObject(keycloak)
 			ReconcileKeycloak(ctx, kcKey)
 			FakeStatefulSetReady(ctx, kclient.ObjectKey{
-				Name:      resources.GetStatefulSetName(keycloak),
+				Name:      rhbk.GetStatefulSetName(keycloak),
 				Namespace: keycloak.Namespace,
 			})
+			SetKeycloakReady(ctx, kclient.ObjectKeyFromObject(keycloak), metav1.ConditionTrue)
 			ReconcileKeycloakImport(ctx, keycloakImport)
 
 			secret := GetImportSecret(ctx, keycloakImport)
@@ -142,9 +146,10 @@ var _ = Describe("KeycloakImport Controller", func() {
 			kcKey := kclient.ObjectKeyFromObject(keycloak)
 			ReconcileKeycloak(ctx, kcKey)
 			FakeStatefulSetReady(ctx, kclient.ObjectKey{
-				Name:      resources.GetStatefulSetName(keycloak),
+				Name:      rhbk.GetStatefulSetName(keycloak),
 				Namespace: keycloak.Namespace,
 			})
+			SetKeycloakReady(ctx, kclient.ObjectKeyFromObject(keycloak), metav1.ConditionTrue)
 			ReconcileKeycloakImport(ctx, keycloakImport)
 
 			job := GetImportJob(ctx, keycloakImport)
@@ -166,7 +171,7 @@ var _ = Describe("KeycloakImport Controller", func() {
 func GetImportSecret(ctx context.Context, kci *ssov1alpha1.KeycloakImport) *v1.Secret {
 	secret := &v1.Secret{}
 	err := k8sClient.Get(ctx, kclient.ObjectKey{
-		Name:      resources.GetImportJobSecretName(kci),
+		Name:      realm.GetImportJobSecretName(kci),
 		Namespace: kci.Spec.KeycloakInstance.Namespace,
 	}, secret)
 
@@ -180,7 +185,7 @@ func GetImportSecret(ctx context.Context, kci *ssov1alpha1.KeycloakImport) *v1.S
 func GetImportJob(ctx context.Context, kci *ssov1alpha1.KeycloakImport) *v12.Job {
 	job := &v12.Job{}
 	err := k8sClient.Get(ctx, kclient.ObjectKey{
-		Name:      resources.GetImportJobName(kci),
+		Name:      realm.GetImportJobName(kci),
 		Namespace: kci.Spec.KeycloakInstance.Namespace,
 	}, job)
 
@@ -209,6 +214,16 @@ func FakeStatefulSetReady(ctx context.Context, key kclient.ObjectKey) {
 	sts.Status.Replicas = *sts.Spec.Replicas
 	sts.Status.ReadyReplicas = *sts.Spec.Replicas
 	err = k8sClient.Status().Update(ctx, sts)
+	Expect(err).NotTo(HaveOccurred())
+}
+
+func FakeKeycloakReady(ctx context.Context, key kclient.ObjectKey) {
+	kc := &ssov1alpha1.Keycloak{}
+	err := k8sClient.Get(ctx, key, kc)
+	Expect(err).NotTo(HaveOccurred())
+
+	kc.Status.SetReady(metav1.ConditionTrue)
+	err = k8sClient.Status().Update(ctx, kc)
 	Expect(err).NotTo(HaveOccurred())
 }
 

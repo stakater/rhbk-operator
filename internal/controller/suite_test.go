@@ -24,6 +24,8 @@ import (
 	"runtime"
 	"testing"
 
+	monitoring "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	//+kubebuilder:scaffold:imports
@@ -86,6 +88,9 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	err = route.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = monitoring.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:scheme

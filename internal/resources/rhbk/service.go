@@ -1,7 +1,9 @@
-package resources
+package rhbk
 
 import (
 	"context"
+
+	"github.com/stakater/rhbk-operator/internal/resources"
 
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
@@ -18,6 +20,8 @@ type RHBKService struct {
 	Resource *v1.Service
 }
 
+const ManagementServicePortName = "management"
+const ApplicationServicePortName = "https"
 const ManagementPort = 9000
 const HttpsPort = 8443
 
@@ -30,9 +34,10 @@ func GetSvcName(cr *v1alpha1.Keycloak) string {
 }
 
 func (s *RHBKService) Build() error {
-	s.Resource.Labels = map[string]string{
-		"app": "rhbk",
-	}
+	defaultLabels := map[string]string{}
+	resources.DecorateDefaultLabels(defaultLabels)
+
+	s.Resource.Labels = defaultLabels
 	s.Resource.Annotations = map[string]string{
 		"service.beta.openshift.io/serving-cert-secret-name": GetTLSSecretName(s.Keycloak),
 	}
@@ -40,7 +45,7 @@ func (s *RHBKService) Build() error {
 	s.Resource.Spec = v1.ServiceSpec{
 		Ports: []v1.ServicePort{
 			{
-				Name:     "management",
+				Name:     ManagementServicePortName,
 				Protocol: v1.ProtocolTCP,
 				Port:     ManagementPort,
 				TargetPort: intstr.IntOrString{
@@ -48,7 +53,7 @@ func (s *RHBKService) Build() error {
 				},
 			},
 			{
-				Name:     "https",
+				Name:     ApplicationServicePortName,
 				Protocol: v1.ProtocolTCP,
 				Port:     HttpsPort,
 				TargetPort: intstr.IntOrString{

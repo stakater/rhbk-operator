@@ -1,7 +1,9 @@
-package resources
+package rhbk
 
 import (
 	"context"
+
+	"github.com/stakater/rhbk-operator/internal/resources"
 
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
@@ -25,10 +27,10 @@ func GetDiscoverySvcName(cr *v1alpha1.Keycloak) string {
 }
 
 func (s *RHBKDiscoveryService) Build() error {
-	s.Resource.Labels = map[string]string{
-		"app": "rhbk",
-	}
+	defaultLabels := map[string]string{}
+	resources.DecorateDefaultLabels(defaultLabels)
 
+	s.Resource.Labels = defaultLabels
 	s.Resource.Spec = v1.ServiceSpec{
 		ClusterIP:                "None",
 		PublishNotReadyAddresses: true,

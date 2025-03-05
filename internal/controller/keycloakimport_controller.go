@@ -20,6 +20,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/stakater/rhbk-operator/internal/resources/realm"
+	"github.com/stakater/rhbk-operator/internal/resources/rhbk"
+
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/go-logr/logr"
@@ -117,7 +120,7 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	statefulSet := &v1.StatefulSet{}
 	err = r.Get(ctx, client.ObjectKey{
-		Name:      resources.GetStatefulSetName(keycloak),
+		Name:      rhbk.GetStatefulSetName(keycloak),
 		Namespace: keycloak.Namespace,
 	}, statefulSet)
 
@@ -125,7 +128,7 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return r.HandleError(ctx, cr, err, "RHBK deployment not ready")
 	}
 
-	importSecret := &resources.ImportRealmSecret{
+	importSecret := &realm.ImportRealmSecret{
 		ImportCR: cr,
 		Scheme:   r.Scheme,
 	}
@@ -160,7 +163,7 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// If no job found create job and wait for next reconcile when job is completed
 	if found == nil {
-		importJob, err := resources.Build(cr, statefulSet, importSecret.Resource.ResourceVersion)
+		importJob, err := realm.Build(cr, statefulSet, importSecret.Resource.ResourceVersion)
 		if err != nil {
 			return r.HandleError(ctx, cr, err, "Failed to build import job")
 		}
@@ -243,7 +246,6 @@ func (r *KeycloakImportReconciler) HandleSuccess(ctx context.Context, cr *ssov1a
 }
 
 func (r *KeycloakImportReconciler) RolloutChanges(ctx context.Context, statefulSet *v1.StatefulSet, revision string) error {
-	println("-------> rollout")
 	original := statefulSet.DeepCopy()
 	if statefulSet.Spec.Template.Annotations == nil {
 		statefulSet.Spec.Template.Annotations = make(map[string]string)

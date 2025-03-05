@@ -1,7 +1,9 @@
-package resources
+package realm
 
 import (
 	"fmt"
+
+	"github.com/stakater/rhbk-operator/internal/resources"
 
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
 	"github.com/stakater/rhbk-operator/internal/constants"
@@ -29,8 +31,9 @@ type RealmImportJob struct {
 }
 
 func Build(cr *v1alpha1.KeycloakImport, sts *v1.StatefulSet, revision string) (*v12.Job, error) {
-	ownerLabels := GetOwnerLabels(cr.Name, cr.Namespace)
+	ownerLabels := resources.GetOwnerLabels(cr.Name, cr.Namespace)
 	ownerLabels[constants.RHBKImportRevisionLabel] = revision
+	resources.DecorateDefaultLabels(ownerLabels)
 
 	template := sts.Spec.Template.DeepCopy()
 	template.Labels = ownerLabels

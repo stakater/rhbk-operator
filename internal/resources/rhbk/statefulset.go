@@ -1,9 +1,12 @@
-package resources
+package rhbk
 
 import (
 	"context"
 	"fmt"
 	"strconv"
+
+	"github.com/stakater/rhbk-operator/internal/resources"
+	"github.com/stakater/rhbk-operator/internal/resources/realm"
 
 	"github.com/stakater/rhbk-operator/internal/constants"
 
@@ -110,15 +113,14 @@ func (ks *RHBKStatefulSet) DecorateVolumeMounts(mounts []v12.VolumeMount) []v12.
 }
 
 func (ks *RHBKStatefulSet) Build() error {
-	labels := map[string]string{
-		"app": "rhbk",
-	}
+	defaultLabels := map[string]string{}
+	resources.DecorateDefaultLabels(defaultLabels)
 
-	ks.Resource.ObjectMeta.Labels = labels
+	ks.Resource.Labels = defaultLabels
 	ks.Resource.Spec = v1.StatefulSetSpec{
 		Replicas: ks.Keycloak.Spec.Instances,
 		Selector: &metav1.LabelSelector{
-			MatchLabels: labels,
+			MatchLabels: defaultLabels,
 		},
 		UpdateStrategy: v1.StatefulSetUpdateStrategy{
 			Type: v1.RollingUpdateStatefulSetStrategyType,
@@ -134,11 +136,11 @@ func (ks *RHBKStatefulSet) Build() error {
 		},
 		Template: v12.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
-				Labels:      labels,
+				Labels:      defaultLabels,
 				Annotations: ks.Resource.Spec.Template.Annotations,
 			},
 			Spec: v12.PodSpec{
-				InitContainers: GetInitContainer(ks.Keycloak),
+				InitContainers: realm.GetInitContainer(ks.Keycloak),
 				Containers: []v12.Container{
 					{
 						Name:            constants.RHBKContainerName,
@@ -218,6 +220,10 @@ func (ks *RHBKStatefulSet) Build() error {
 								Name:  "KC_TRACING_RESOURCE_ATTRIBUTES",
 								Value: fmt.Sprintf("k8s.namespace.name=%s", ks.Keycloak.Namespace),
 							},
+							{
+								Name:  "KC_METRICS_ENABLED",
+								Value: strconv.FormatBool(true),
+							},
 						}),
 						Resources: v12.ResourceRequirements{
 							Requests: v12.ResourceList{
@@ -274,7 +280,7 @@ func (ks *RHBKStatefulSet) Build() error {
 								},
 								{
 									Name:      "providers",
-									MountPath: ProvidersPATH,
+									MountPath: realm.ProvidersPATH,
 								},
 								{
 									Name:      constants.TrustedCaVolume,

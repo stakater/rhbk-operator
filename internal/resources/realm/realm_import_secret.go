@@ -1,4 +1,4 @@
-package resources
+package realm
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"text/template"
 
-	"k8s.io/apimachinery/pkg/labels"
+	"github.com/stakater/rhbk-operator/internal/resources"
 
 	"github.com/stakater/rhbk-operator/internal/constants"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -68,7 +68,7 @@ func (s *ImportRealmSecret) MutateFn() error {
 		return err
 	}
 
-	ownerLabels := GetOwnerLabels(s.ImportCR.Name, s.ImportCR.Namespace)
+	ownerLabels := resources.GetOwnerLabels(s.ImportCR.Name, s.ImportCR.Namespace)
 	ownerLabels[constants.RHBKWatchedResourceLabel] = strconv.FormatBool(true)
 	s.Resource.Labels = ownerLabels
 
@@ -91,20 +91,4 @@ func expandTemplate(t string, substitutions map[string]string) ([]byte, error) {
 	}
 
 	return results.Bytes(), nil
-}
-
-func FindAllImportSecrets(ctx context.Context, cr *v1alpha1.KeycloakImport, c client.Client) (*v1.SecretList, error) {
-	kcNamespace := cr.Spec.KeycloakInstance.Namespace
-	ownerLabels := labels.SelectorFromSet(GetOwnerLabels(cr.Name, cr.Namespace))
-
-	secrets := &v1.SecretList{}
-	err := c.List(ctx, secrets, client.InNamespace(kcNamespace), client.MatchingLabelsSelector{
-		Selector: ownerLabels,
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return secrets, nil
 }

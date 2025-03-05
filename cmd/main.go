@@ -22,6 +22,8 @@ import (
 	"os"
 	"strconv"
 
+	monitoring "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+
 	route "github.com/openshift/api/route/v1"
 	"github.com/stakater/rhbk-operator/internal/constants"
 	v12 "k8s.io/api/core/v1"
@@ -54,9 +56,12 @@ var (
 )
 
 func init() {
+	utilruntime.Must(v12.AddToScheme(scheme))
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(route.AddToScheme(scheme))
 	utilruntime.Must(ssov1alpha1.AddToScheme(scheme))
+	utilruntime.Must(ssov1alpha1.AddToScheme(scheme))
+	utilruntime.Must(monitoring.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 

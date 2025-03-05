@@ -34,9 +34,9 @@ spec:
       secret:
         name: rhbk-pguser-rhbk
         key: password
-  trustedCABundles:
-    name: openshift-service-ca.crt
-  providers:
-    - name: custom-spi.jar
-      url:
-        value: "https://github.com/example/custom-spi.jar"
+#  trustedCABundles:
+#    name: openshift-service-ca.crt
+#  providers:
+#    - name: custom-spi.jar
+#      url:
+#        value: "https://github.com/example/custom-spi.jar"

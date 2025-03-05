@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
-	"strconv"
 
 	v13 "k8s.io/api/core/v1"
 
@@ -24,11 +23,12 @@ func FormatResource(obj interface{}) string {
 	return string(jsonData)
 }
 
-func GetDefaultLabels() map[string]string {
-	return map[string]string{
-		"app":                              "rhbk",
-		constants.RHBKWatchedResourceLabel: strconv.FormatBool(true),
+func DecorateDefaultLabels(existing map[string]string) {
+	if existing == nil {
+		existing = make(map[string]string)
 	}
+
+	existing["app"] = "rhbk"
 }
 
 func IsJobCompleted(job *v1.Job) bool {

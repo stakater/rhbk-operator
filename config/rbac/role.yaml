@@ -5,6 +5,17 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - secrets
+  - services
+  verbs:
+  - create
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
   - apps
   resources:
   - statefulsets
@@ -25,21 +36,12 @@ rules:
   - update
   - watch
 - apiGroups:
-  - ""
+  - monitoring.coreos.com
   resources:
-  - secrets
+  - servicemonitors
   verbs:
   - create
-  - get
-  - list
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - services
-  verbs:
-  - create
+  - delete
   - get
   - list
   - update
@@ -58,31 +60,6 @@ rules:
   - sso.stakater.com
   resources:
   - keycloakimports
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - sso.stakater.com
-  resources:
-  - keycloakimports/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - sso.stakater.com
-  resources:
-  - keycloakimports/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - sso.stakater.com
-  resources:
   - keycloaks
   verbs:
   - create
@@ -95,12 +72,14 @@ rules:
 - apiGroups:
   - sso.stakater.com
   resources:
+  - keycloakimports/finalizers
   - keycloaks/finalizers
   verbs:
   - update
 - apiGroups:
   - sso.stakater.com
   resources:
+  - keycloakimports/status
   - keycloaks/status
   verbs:
   - get
