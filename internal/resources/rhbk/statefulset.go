@@ -3,10 +3,11 @@ package rhbk
 import (
 	"context"
 	"fmt"
-	"github.com/stakater/rhbk-operator/internal/resources"
-	"github.com/stakater/rhbk-operator/internal/resources/realm"
 	"strconv"
 	"strings"
+
+	"github.com/stakater/rhbk-operator/internal/resources"
+	"github.com/stakater/rhbk-operator/internal/resources/realm"
 
 	"github.com/stakater/rhbk-operator/internal/constants"
 
