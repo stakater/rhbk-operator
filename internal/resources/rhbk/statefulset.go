@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/stakater/rhbk-operator/internal/resources"
 	"github.com/stakater/rhbk-operator/internal/resources/realm"
@@ -82,18 +81,22 @@ func (ks *RHBKStatefulSet) DecorateENV(vars []v12.EnvVar) []v12.EnvVar {
 		}...)
 	}
 
-	if len(ks.Keycloak.Spec.Features.Enabled) > 0 {
-		vars = append(vars, v12.EnvVar{
-			Name:  "KC_FEATURES",
-			Value: strings.Join(ks.Keycloak.Spec.Features.Enabled, ","),
-		})
-	}
+	if len(ks.Keycloak.Spec.AdditionalOptions) > 0 {
+		for _, env := range ks.Keycloak.Spec.AdditionalOptions {
+			replacement := v12.EnvVar{
+				Name: env.Name,
+			}
 
-	if len(ks.Keycloak.Spec.Features.Disabled) > 0 {
-		vars = append(vars, v12.EnvVar{
-			Name:  "KC_FEATURES_DISABLED",
-			Value: strings.Join(ks.Keycloak.Spec.Features.Disabled, ","),
-		})
+			if env.Value != "" {
+				replacement.Value = env.Value
+			} else if env.Secret != nil {
+				replacement.ValueFrom = &v12.EnvVarSource{
+					SecretKeyRef: env.Secret,
+				}
+			}
+
+			vars = resources.AddOrReplaceEnv(replacement, vars)
+		}
 	}
 
 	return vars

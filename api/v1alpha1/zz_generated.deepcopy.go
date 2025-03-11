@@ -278,11 +278,6 @@ func (in *KeycloakSpec) DeepCopyInto(out *KeycloakSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.Features != nil {
-		in, out := &in.Features, &out.Features
-		*out = new(Features)
-		(*in).DeepCopyInto(*out)
-	}
 	if in.Instances != nil {
 		in, out := &in.Instances, &out.Instances
 		*out = new(int32)

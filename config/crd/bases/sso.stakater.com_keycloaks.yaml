@@ -262,18 +262,6 @@ spec:
                 - port
                 - user
                 type: object
-              features:
-                description: Extra features to enabled
-                properties:
-                  disabled:
-                    items:
-                      type: string
-                    type: array
-                  enabled:
-                    items:
-                      type: string
-                    type: array
-                type: object
               instances:
                 description: Number of instances
                 format: int32

@@ -31,10 +31,6 @@ type KeycloakSpec struct {
 	// Extra options to load
 	AdditionalOptions []SecretOptionVar `json:"additionalOptions,omitempty"`
 
-	// +optional
-	// Extra features to enabled
-	Features *Features `json:"features,omitempty"`
-
 	// +required
 	// Number of instances
 	Instances *int32 `json:"instances"`

@@ -71,3 +71,20 @@ func GetOwnerLabels(ownerName string, ownerNamespace string) map[string]string {
 		constants.RHBKImportNamespaceLabel: ownerNamespace,
 	}
 }
+
+func AddOrReplaceEnv(env v13.EnvVar, vars []v13.EnvVar) []v13.EnvVar {
+	found := false
+	for i, envVar := range vars {
+		if envVar.Name == env.Name {
+			vars[i] = env
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		vars = append(vars, env)
+	}
+
+	return vars
+}
