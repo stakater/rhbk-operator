@@ -61,7 +61,7 @@ type KeycloakImportReconciler struct {
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloaks,verbs=get;list;watch
 //+kubebuilder:rbac:groups=sso.stakater.com,resources=keycloaks/status,verbs=get
 //+kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;delete
-//+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update
+//+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;delete
 //+kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;update
 
 func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
