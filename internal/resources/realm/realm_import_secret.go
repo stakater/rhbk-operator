@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"text/template"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/stakater/rhbk-operator/internal/resources"
 
 	"github.com/stakater/rhbk-operator/internal/constants"
@@ -77,6 +79,23 @@ func (s *ImportRealmSecret) MutateFn() error {
 	}
 
 	return nil
+}
+
+func GetImportSecrets(ctx context.Context, kc client.Client, kci *v1alpha1.KeycloakImport) (*v1.SecretList, error) {
+	kcNamespace := kci.Spec.KeycloakInstance.Namespace
+	ownerLabels := labels.SelectorFromSet(resources.GetOwnerLabels(kci.Name, kci.Namespace))
+
+	// Remove secrets
+	secrets := &v1.SecretList{}
+	err := kc.List(ctx, secrets, client.InNamespace(kcNamespace), client.MatchingLabelsSelector{
+		Selector: ownerLabels,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return secrets, nil
 }
 
 func expandTemplate(t string, substitutions map[string]string) ([]byte, error) {

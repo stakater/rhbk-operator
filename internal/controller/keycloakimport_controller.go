@@ -150,7 +150,7 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	var found *v14.Job
 	for _, job := range jobs.Items {
-		if job.Labels[constants.RHBKImportRevisionLabel] == importSecret.Resource.ResourceVersion {
+		if job.Labels[realm.GetImportJobAnnotation(cr)] == importSecret.Resource.ResourceVersion {
 			found = &job
 			break
 		} else {
@@ -177,24 +177,17 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	if !resources.MatchSet(statefulSet.Spec.Template.Annotations, map[string]string{
-		"statefulset.kubernetes.io/rollout": importSecret.Resource.ResourceVersion,
+		realm.GetImportJobAnnotation(cr): importSecret.Resource.ResourceVersion,
 	}) && resources.IsJobCompleted(found) {
-		return ctrl.Result{}, r.RolloutChanges(ctx, statefulSet, importSecret.Resource.ResourceVersion)
+		return ctrl.Result{}, r.RolloutChanges(ctx, cr, statefulSet)
 	}
 
 	return r.HandleSuccess(ctx, cr)
 }
 
 func (r *KeycloakImportReconciler) cleanupExternalResources(ctx context.Context, cr *ssov1alpha1.KeycloakImport) error {
-	kcNamespace := cr.Spec.KeycloakInstance.Namespace
-	ownerLabels := labels.SelectorFromSet(resources.GetOwnerLabels(cr.Name, cr.Namespace))
-
 	// Remove jobs
-	jobs := &v14.JobList{}
-	err := r.List(ctx, jobs, client.InNamespace(kcNamespace), client.MatchingLabelsSelector{
-		Selector: ownerLabels,
-	})
-
+	jobs, err := realm.GetImportJobs(ctx, r.Client, cr)
 	if err != nil {
 		return err
 	}
@@ -209,10 +202,7 @@ func (r *KeycloakImportReconciler) cleanupExternalResources(ctx context.Context,
 	}
 
 	// Remove secrets
-	secrets := v13.SecretList{}
-	err = r.List(ctx, &secrets, client.InNamespace(kcNamespace), client.MatchingLabelsSelector{
-		Selector: ownerLabels,
-	})
+	secrets, err := realm.GetImportSecrets(ctx, r.Client, cr)
 
 	if err != nil {
 		return err
@@ -245,12 +235,18 @@ func (r *KeycloakImportReconciler) HandleSuccess(ctx context.Context, cr *ssov1a
 	return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
 }
 
-func (r *KeycloakImportReconciler) RolloutChanges(ctx context.Context, statefulSet *v1.StatefulSet, revision string) error {
-	original := statefulSet.DeepCopy()
-	if statefulSet.Spec.Template.Annotations == nil {
-		statefulSet.Spec.Template.Annotations = make(map[string]string)
+func (r *KeycloakImportReconciler) RolloutChanges(ctx context.Context, kci *ssov1alpha1.KeycloakImport, statefulSet *v1.StatefulSet) error {
+	secrets, err := realm.GetImportSecrets(ctx, r.Client, kci)
+	if err != nil {
+		return err
 	}
-	statefulSet.Spec.Template.Annotations["statefulset.kubernetes.io/rollout"] = revision
+
+	original := statefulSet.DeepCopy()
+	statefulSet.Spec.Template.Annotations = make(map[string]string)
+
+	for _, s := range secrets.Items {
+		statefulSet.Spec.Template.Annotations[realm.GetImportJobAnnotation(kci)] = s.ResourceVersion
+	}
 
 	return r.Patch(ctx, statefulSet, client.MergeFrom(original))
 }

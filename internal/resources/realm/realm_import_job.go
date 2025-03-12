@@ -1,12 +1,15 @@
 package realm
 
 import (
+	"context"
 	"fmt"
+
+	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/stakater/rhbk-operator/internal/resources"
 
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
-	"github.com/stakater/rhbk-operator/internal/constants"
 	v1 "k8s.io/api/apps/v1"
 	v12 "k8s.io/api/batch/v1"
 	v14 "k8s.io/api/core/v1"
@@ -25,6 +28,10 @@ func GetRealmMountPath(cr *v1alpha1.KeycloakImport) string {
 	return fmt.Sprintf("/mnt/realm-import/%s-realm.json", cr.Name)
 }
 
+func GetImportJobAnnotation(cr *v1alpha1.KeycloakImport) string {
+	return fmt.Sprintf("%s/%s", cr.Name, cr.Namespace)
+}
+
 type RealmImportJob struct {
 	KeycloakImport *v1alpha1.KeycloakImport
 	StatefulSet    *v1.StatefulSet
@@ -32,7 +39,7 @@ type RealmImportJob struct {
 
 func Build(cr *v1alpha1.KeycloakImport, sts *v1.StatefulSet, revision string) (*v12.Job, error) {
 	ownerLabels := resources.GetOwnerLabels(cr.Name, cr.Namespace)
-	ownerLabels[constants.RHBKImportRevisionLabel] = revision
+	ownerLabels[GetImportJobAnnotation(cr)] = revision
 	resources.DecorateDefaultLabels(ownerLabels)
 
 	template := sts.Spec.Template.DeepCopy()
@@ -115,4 +122,20 @@ func Build(cr *v1alpha1.KeycloakImport, sts *v1.StatefulSet, revision string) (*
 	}
 
 	return job, nil
+}
+
+func GetImportJobs(ctx context.Context, kc client.Client, kci *v1alpha1.KeycloakImport) (*v12.JobList, error) {
+	kcNamespace := kci.Spec.KeycloakInstance.Namespace
+	ownerLabels := labels.SelectorFromSet(resources.GetOwnerLabels(kci.Name, kci.Namespace))
+
+	jobs := &v12.JobList{}
+	err := kc.List(ctx, jobs, client.InNamespace(kcNamespace), client.MatchingLabelsSelector{
+		Selector: ownerLabels,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return jobs, nil
 }

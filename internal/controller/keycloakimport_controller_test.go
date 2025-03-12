@@ -160,7 +160,7 @@ var _ = Describe("KeycloakImport Controller", func() {
 
 			SetJobCompleteStatus(ctx, keycloakImport, v1.ConditionTrue)
 			ReconcileKeycloakImport(ctx, keycloakImport)
-			Expect(GetKeycloakStatefulSet(ctx, keycloak).Spec.Template.Annotations).To(HaveKeyWithValue("statefulset.kubernetes.io/rollout", GetImportSecret(ctx, keycloakImport).ResourceVersion))
+			Expect(GetKeycloakStatefulSet(ctx, keycloak).Spec.Template.Annotations).To(HaveKeyWithValue(realm.GetImportJobAnnotation(keycloakImport), GetImportSecret(ctx, keycloakImport).ResourceVersion))
 
 			ReconcileKeycloakImport(ctx, keycloakImport)
 			Expect(keycloakImport.Status.IsReady()).To(BeTrue())
@@ -236,7 +236,7 @@ func SetJobCompleteStatus(ctx context.Context, kci *ssov1alpha1.KeycloakImport, 
 	}
 
 	Expect(k8sClient.Status().Update(ctx, job)).NotTo(HaveOccurred())
-	job.Labels[constants.RHBKImportRevisionLabel] = GetImportSecret(ctx, kci).ResourceVersion
+	job.Labels[realm.GetImportJobAnnotation(kci)] = GetImportSecret(ctx, kci).ResourceVersion
 	Expect(k8sClient.Update(ctx, job)).NotTo(HaveOccurred())
 	Expect(resources.IsJobCompleted(job)).To(BeTrue())
 }
