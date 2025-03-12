@@ -179,10 +179,19 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if !resources.MatchSet(statefulSet.Spec.Template.Annotations, map[string]string{
 		realm.GetImportJobAnnotation(cr): importSecret.Resource.ResourceVersion,
 	}) && resources.IsJobCompleted(found) {
-		return ctrl.Result{}, r.RolloutChanges(ctx, cr, statefulSet)
+		return ctrl.Result{}, r.rolloutChanges(ctx, cr, statefulSet, importSecret.Resource.ResourceVersion)
 	}
 
 	return r.HandleSuccess(ctx, cr)
+}
+
+func (r *KeycloakImportReconciler) rolloutChanges(ctx context.Context, kci *ssov1alpha1.KeycloakImport, statefulSet *v1.StatefulSet, version string) error {
+	original := statefulSet.DeepCopy()
+	statefulSet.Spec.Template.Annotations = make(map[string]string)
+
+	statefulSet.Spec.Template.Annotations[realm.GetImportJobAnnotation(kci)] = version
+
+	return r.Patch(ctx, statefulSet, client.MergeFrom(original))
 }
 
 func (r *KeycloakImportReconciler) cleanupExternalResources(ctx context.Context, cr *ssov1alpha1.KeycloakImport) error {
@@ -233,22 +242,6 @@ func (r *KeycloakImportReconciler) HandleSuccess(ctx context.Context, cr *ssov1a
 	original := cr.DeepCopy()
 	cr.Status.Conditions.SetReady(v12.ConditionTrue)
 	return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
-}
-
-func (r *KeycloakImportReconciler) RolloutChanges(ctx context.Context, kci *ssov1alpha1.KeycloakImport, statefulSet *v1.StatefulSet) error {
-	secrets, err := realm.GetImportSecrets(ctx, r.Client, kci)
-	if err != nil {
-		return err
-	}
-
-	original := statefulSet.DeepCopy()
-	statefulSet.Spec.Template.Annotations = make(map[string]string)
-
-	for _, s := range secrets.Items {
-		statefulSet.Spec.Template.Annotations[realm.GetImportJobAnnotation(kci)] = s.ResourceVersion
-	}
-
-	return r.Patch(ctx, statefulSet, client.MergeFrom(original))
 }
 
 // SetupWithManager sets up the controller with the Manager.
