@@ -187,7 +187,10 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 func (r *KeycloakImportReconciler) rolloutChanges(ctx context.Context, kci *ssov1alpha1.KeycloakImport, statefulSet *v1.StatefulSet, version string) error {
 	original := statefulSet.DeepCopy()
-	statefulSet.Spec.Template.Annotations = make(map[string]string)
+
+	if statefulSet.Spec.Template.Annotations == nil {
+		statefulSet.Spec.Template.Annotations = make(map[string]string)
+	}
 
 	statefulSet.Spec.Template.Annotations[realm.GetImportJobAnnotation(kci)] = version
 
