@@ -46,6 +46,8 @@ type KeycloakSpec struct {
 	// +optional
 	// Custom providers & SPIs to add to the RHBK installation
 	Providers []Provider `json:"providers,omitempty"`
+
+	Hostname string `json:"hostname,omitempty"`
 }
 
 type Provider struct {

@@ -26,6 +26,7 @@ func (s *RHBKRoute) Build() error {
 
 	s.Resource.Labels = defaultLabels
 	s.Resource.Spec = v1.RouteSpec{
+		Host: s.Keycloak.Spec.Hostname,
 		To: v1.RouteTargetReference{
 			Kind: "Service",
 			Name: GetSvcName(s.Keycloak),
