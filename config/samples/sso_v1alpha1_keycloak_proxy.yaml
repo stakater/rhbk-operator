@@ -1,0 +1,38 @@
+apiVersion: sso.stakater.com/v1alpha1
+kind: Keycloak
+metadata:
+  labels:
+    app.kubernetes.io/name: rhbk-operator
+    app.kubernetes.io/managed-by: kustomize
+    realm.stakater.com/realm-import-sample: "true"
+  name: keycloak-sample
+spec:
+  instances: 2
+  admin:
+    username:
+      secret:
+        name: admin
+        key: username
+    password:
+      secret:
+        name: admin
+        key: password
+  database:
+    host:
+      secret:
+        name: rhbk-pguser-rhbk
+        key: host
+    port:
+      secret:
+        name: rhbk-pguser-rhbk
+        key: port
+    user:
+      secret:
+        name: rhbk-pguser-rhbk
+        key: user
+    password:
+      secret:
+        name: rhbk-pguser-rhbk
+        key: password
+  networkOptions:
+    proxy: true

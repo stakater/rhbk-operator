@@ -23,10 +23,16 @@ type RHBKRoute struct {
 func (s *RHBKRoute) Build() error {
 	defaultLabels := map[string]string{}
 	resources.DecorateDefaultLabels(defaultLabels)
+	var hostname string
+	if s.Keycloak.Spec.NetworkConfig == nil {
+		hostname = ""
+	} else {
+		hostname = s.Keycloak.Spec.NetworkConfig.Hostname
+	}
 
 	s.Resource.Labels = defaultLabels
 	s.Resource.Spec = v1.RouteSpec{
-		Host: s.Keycloak.Spec.Hostname,
+		Host: hostname,
 		To: v1.RouteTargetReference{
 			Kind: "Service",
 			Name: GetSvcName(s.Keycloak),

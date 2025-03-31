@@ -28,7 +28,7 @@ type KeycloakSpec struct {
 	Database *PostgresDatabase `json:"database"`
 
 	// +optional
-	// Extra options to load
+	// Extra options to load, or override existing ENVs
 	AdditionalOptions []SecretOptionVar `json:"additionalOptions,omitempty"`
 
 	// +required
@@ -47,6 +47,18 @@ type KeycloakSpec struct {
 	// Custom providers & SPIs to add to the RHBK installation
 	Providers []Provider `json:"providers,omitempty"`
 
+	// Configurations for hostname related options
+	// Default proxy is false
+	NetworkConfig *NetworkConfig `json:"networkOptions,omitempty"`
+}
+
+type NetworkConfig struct {
+	// Enable proxy mode will set
+	// KC_PROXY_HEADERS=xforwarded
+	// PROXY is expected to block paths according to https://www.keycloak.org/server/reverseproxy
+	Proxy bool `json:"proxy,omitempty"`
+
+	// Required if Proxy is disabled
 	Hostname string `json:"hostname,omitempty"`
 }
 

@@ -70,6 +70,15 @@ rules:
   - update
   - watch
 - apiGroups:
+  - route.openshift.io
+  resources:
+  - routes/custom-host
+  verbs:
+  - create
+  - delete
+  - get
+  - update
+- apiGroups:
   - sso.stakater.com
   resources:
   - keycloakimports

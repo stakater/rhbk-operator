@@ -81,6 +81,34 @@ func (ks *RHBKStatefulSet) DecorateENV(vars []v12.EnvVar) []v12.EnvVar {
 		}...)
 	}
 
+	if ks.Keycloak.Spec.NetworkConfig != nil && ks.Keycloak.Spec.NetworkConfig.Proxy {
+		vars = append(vars, []v12.EnvVar{
+			{
+				Name:  "KC_HOSTNAME_STRICT",
+				Value: strconv.FormatBool(false),
+			},
+			{
+				Name:  "KC_PROXY_HEADERS",
+				Value: "xforwarded",
+			},
+		}...)
+	} else {
+		vars = append(vars, []v12.EnvVar{
+			{
+				Name:  "KC_HOSTNAME_STRICT",
+				Value: strconv.FormatBool(true),
+			},
+			{
+				Name:  "KC_HTTP_ENABLED",
+				Value: strconv.FormatBool(false),
+			},
+			{
+				Name:  "KC_PROXY_HEADERS",
+				Value: "xforwarded",
+			},
+		}...)
+	}
+
 	if len(ks.Keycloak.Spec.AdditionalOptions) > 0 {
 		for _, env := range ks.Keycloak.Spec.AdditionalOptions {
 			replacement := v12.EnvVar{
@@ -187,20 +215,12 @@ func (ks *RHBKStatefulSet) Build() error {
 								Value: ks.HostName,
 							},
 							{
-								Name:  "KC_HTTP_PORT",
-								Value: strconv.FormatInt(ManagementPort, 10),
-							},
-							{
 								Name:  "KC_HTTPS_PORT",
-								Value: strconv.FormatInt(HttpsPort, 10),
+								Value: strconv.Itoa(HttpsPort),
 							},
 							{
-								Name:  "KC_HTTPS_CERTIFICATE_FILE",
-								Value: "/mnt/certificates/tls.crt",
-							},
-							{
-								Name:  "KC_HTTPS_CERTIFICATE_KEY_FILE",
-								Value: "/mnt/certificates/tls.key",
+								Name:  "KC_HTTP_MANAGEMENT_PORT",
+								Value: strconv.Itoa(ManagementPort),
 							},
 							{
 								Name:  "KC_HEALTH_ENABLED",
@@ -241,6 +261,14 @@ func (ks *RHBKStatefulSet) Build() error {
 							{
 								Name:  "KC_METRICS_ENABLED",
 								Value: strconv.FormatBool(true),
+							},
+							{
+								Name:  "KC_HTTPS_CERTIFICATE_FILE",
+								Value: "/mnt/certificates/tls.crt",
+							},
+							{
+								Name:  "KC_HTTPS_CERTIFICATE_KEY_FILE",
+								Value: "/mnt/certificates/tls.key",
 							},
 						}),
 						Resources: v12.ResourceRequirements{

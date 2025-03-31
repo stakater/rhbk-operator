@@ -40,7 +40,7 @@ spec:
             description: KeycloakSpec defines the desired state of Keycloak
             properties:
               additionalOptions:
-                description: Extra options to load
+                description: Extra options to load, or override existing ENVs
                 items:
                   properties:
                     name:
@@ -266,6 +266,21 @@ spec:
                 description: Number of instances
                 format: int32
                 type: integer
+              networkOptions:
+                description: |-
+                  Configurations for hostname related options
+                  Default proxy is false
+                properties:
+                  hostname:
+                    description: Required if Proxy is disabled
+                    type: string
+                  proxy:
+                    description: |-
+                      Enable proxy mode will set
+                      KC_PROXY_HEADERS=xforwarded
+                      PROXY is expected to block paths according to https://www.keycloak.org/server/reverseproxy
+                    type: boolean
+                type: object
               providers:
                 description: Custom providers & SPIs to add to the RHBK installation
                 items:
