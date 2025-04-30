@@ -1,0 +1,20 @@
+apiVersion: sso.stakater.com/v1alpha1
+kind: KeycloakImport
+metadata:
+  name: {{ .name }}
+spec:
+  keycloakInstance:
+    name: {{ .rhbkName }}
+    namespace: {{ .rhbkNamespace }}
+  substitutions:
+    - name: DISPLAY_NAME
+      secret:
+        name: {{ .replacementSecret}}
+        key: displayName
+  overrideIfExists: true
+  json: |
+    {
+      "realm": "{{ .name }}",
+      "displayName": "%.DISPLAY_NAME%",
+      "enabled": {{ .realmEnabled }}
+    }

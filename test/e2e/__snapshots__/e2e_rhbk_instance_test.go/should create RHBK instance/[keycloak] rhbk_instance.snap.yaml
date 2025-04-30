@@ -1,0 +1,40 @@
+
+[RHBK operator should create RHBK instance - 1]
+metadata:
+  name: e2e-rhbk
+  namespace: rhbk-instance
+  uid: <Any value>
+  resourceVersion: <Any value>
+  generation: 1
+  creationTimestamp: <Any value>
+  annotations: <Any value>
+  managedFields: <Any value>
+spec:
+  database:
+    host:
+      value: e2e-rhbk
+    port:
+      value: "5432"
+    user:
+      value: e2e
+    password:
+      value: test123
+  instances: 1
+  admin:
+    username:
+      secret:
+        name: admin-secret
+        key: username
+    password:
+      secret:
+        name: admin-secret
+        key: password
+status:
+  conditions:
+    - type: ReconcileSuccess
+      status: "True"
+      lastTransitionTime: <Any value>
+      reason: LastReconcileCycleSucceded
+      message: ""
+
+---
