@@ -51,6 +51,13 @@ var _ = Describe("KeycloakImport Controller", func() {
 					Name:      "keycloak",
 					Namespace: "rhbk-instance",
 				},
+				Spec: ssov1alpha1.KeycloakSpec{
+					Instances: &[]int32{1}[0],
+					Database: &ssov1alpha1.PostgresDatabase{
+						Host: ssov1alpha1.SecretOption{Value: "rhbk-pguser-rhbk"},
+						Port: ssov1alpha1.SecretOption{Value: "5432"},
+					},
+				},
 			}
 
 			By("creating the custom resource for the Kind Keycloak")

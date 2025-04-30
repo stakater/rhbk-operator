@@ -48,6 +48,21 @@ var _ = Describe("Keycloak Controller", func() {
 					Name:      resourceName,
 					Namespace: resourceNs,
 				},
+				Spec: ssov1alpha1.KeycloakSpec{
+					Instances: &[]int32{1}[0],
+					Database: &ssov1alpha1.PostgresDatabase{
+						Host:     ssov1alpha1.SecretOption{Value: "rhbk-pguser-rhbk"},
+						Port:     ssov1alpha1.SecretOption{Value: "5432"},
+						User:     ssov1alpha1.SecretOption{Value: "rhbk"},
+						Password: ssov1alpha1.SecretOption{Value: "rhbk"},
+					},
+					Providers: []ssov1alpha1.Provider{
+						{
+							Name: "keycloak-metrics-spi-6.0.0.jar",
+							URL:  ssov1alpha1.SecretOption{Value: "https://github.com/stakater/keycloak-metrics-spi/releases/download/6.0.0/keycloak-metrics-spi-6.0.0.jar"},
+						},
+					},
+				},
 			}
 
 			By("creating the custom resource for the Kind Keycloak")
