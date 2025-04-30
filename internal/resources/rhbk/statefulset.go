@@ -5,11 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/stakater/rhbk-operator/internal/resources"
-	"github.com/stakater/rhbk-operator/internal/resources/realm"
-
-	"github.com/stakater/rhbk-operator/internal/constants"
-
 	v1 "k8s.io/api/apps/v1"
 	v12 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -20,6 +15,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
+	"github.com/stakater/rhbk-operator/internal/constants"
+	"github.com/stakater/rhbk-operator/internal/resources"
+	"github.com/stakater/rhbk-operator/internal/resources/realm"
 )
 
 const RHBKImage = "registry.redhat.io/rhbk/keycloak-rhel9:26.0-6"
@@ -35,6 +33,22 @@ func GetStatefulSetName(cr *v1alpha1.Keycloak) string {
 	return cr.Name
 }
 
+func getENV(name string, selector v1alpha1.SecretOption) v12.EnvVar {
+	env := v12.EnvVar{
+		Name: name,
+	}
+
+	if selector.Secret != nil {
+		env.ValueFrom = &v12.EnvVarSource{
+			SecretKeyRef: selector.Secret,
+		}
+	} else {
+		env.Value = selector.Value
+	}
+
+	return env
+}
+
 func (ks *RHBKStatefulSet) DecorateENV(vars []v12.EnvVar) []v12.EnvVar {
 	if ks.Keycloak.Spec.Database != nil {
 		vars = append(vars, []v12.EnvVar{
@@ -42,30 +56,10 @@ func (ks *RHBKStatefulSet) DecorateENV(vars []v12.EnvVar) []v12.EnvVar {
 				Name:  "KC_DB",
 				Value: "postgres",
 			},
-			{
-				Name: "KC_DB_USERNAME",
-				ValueFrom: &v12.EnvVarSource{
-					SecretKeyRef: ks.Keycloak.Spec.Database.User.Secret,
-				},
-			},
-			{
-				Name: "KC_DB_PASSWORD",
-				ValueFrom: &v12.EnvVarSource{
-					SecretKeyRef: ks.Keycloak.Spec.Database.Password.Secret,
-				},
-			},
-			{
-				Name: "KC_DB_URL_HOST",
-				ValueFrom: &v12.EnvVarSource{
-					SecretKeyRef: ks.Keycloak.Spec.Database.Host.Secret,
-				},
-			},
-			{
-				Name: "KC_DB_URL_PORT",
-				ValueFrom: &v12.EnvVarSource{
-					SecretKeyRef: ks.Keycloak.Spec.Database.Port.Secret,
-				},
-			},
+			getENV("KC_DB_USERNAME", ks.Keycloak.Spec.Database.User),
+			getENV("KC_DB_PASSWORD", ks.Keycloak.Spec.Database.Password),
+			getENV("KC_DB_URL_HOST", ks.Keycloak.Spec.Database.Host),
+			getENV("KC_DB_URL_PORT", ks.Keycloak.Spec.Database.Port),
 			{
 				Name:  "KC_DB_POOL_INITIAL_SIZE",
 				Value: "30",
@@ -234,18 +228,8 @@ func (ks *RHBKStatefulSet) Build() error {
 								Name:  "KC_CACHE_STACK",
 								Value: "kubernetes",
 							},
-							{
-								Name: "KC_BOOTSTRAP_ADMIN_USERNAME",
-								ValueFrom: &v12.EnvVarSource{
-									SecretKeyRef: ks.Keycloak.Spec.Admin.Username.Secret,
-								},
-							},
-							{
-								Name: "KC_BOOTSTRAP_ADMIN_PASSWORD",
-								ValueFrom: &v12.EnvVarSource{
-									SecretKeyRef: ks.Keycloak.Spec.Admin.Password.Secret,
-								},
-							},
+							getENV("KC_BOOTSTRAP_ADMIN_USERNAME", ks.Keycloak.Spec.Admin.Username),
+							getENV("KC_BOOTSTRAP_ADMIN_PASSWORD", ks.Keycloak.Spec.Admin.Password),
 							{
 								Name:  "KC_TRUSTSTORE_PATHS",
 								Value: "conf/truststores,/var/run/secrets/kubernetes.io/serviceaccount/ca.crt,/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt",

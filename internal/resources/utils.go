@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"hash/fnv"
 
-	v13 "k8s.io/api/core/v1"
-
 	v12 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/batch/v1"
+	v13 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/stakater/rhbk-operator/internal/constants"
-	v1 "k8s.io/api/batch/v1"
 )
 
 func FormatResource(obj interface{}) string {
@@ -33,11 +32,9 @@ func DecorateDefaultLabels(existing map[string]string) {
 
 func IsJobCompleted(job *v1.Job) bool {
 	for _, condition := range job.Status.Conditions {
-		if condition.Type != v1.JobComplete {
-			continue
+		if condition.Type == v1.JobComplete {
+			return condition.Status == v13.ConditionTrue
 		}
-
-		return condition.Status == v13.ConditionTrue
 	}
 
 	return false

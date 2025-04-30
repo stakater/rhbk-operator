@@ -20,14 +20,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/stakater/rhbk-operator/internal/resources/monitoring"
-
-	v15 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	"github.com/stakater/rhbk-operator/internal/resources/rhbk"
-
 	v12 "github.com/openshift/api/route/v1"
-	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
-	"github.com/stakater/rhbk-operator/internal/resources"
+	v15 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	v13 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -39,6 +33,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+
+	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
+	"github.com/stakater/rhbk-operator/internal/resources"
+	"github.com/stakater/rhbk-operator/internal/resources/monitoring"
+	"github.com/stakater/rhbk-operator/internal/resources/rhbk"
 )
 
 type KeycloakReconciler struct {
@@ -74,6 +73,7 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	err = serviceResource.CreateOrUpdate(ctx, r.Client)
 	if err != nil {
+		logger.Error(err, "failed to create/update service", "namespace", cr.Namespace, "name", cr.Name)
 		return r.HandleError(ctx, cr, err, "Service setup not ready")
 	}
 
@@ -120,20 +120,17 @@ func (r *KeycloakReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 }
 
 func (r *KeycloakReconciler) HandleError(ctx context.Context, cr *ssov1alpha1.Keycloak, err error, msg string) (ctrl.Result, error) {
-	original := cr.DeepCopy()
-
 	if err != nil {
 		cr.Status.Conditions.SetReady(v14.ConditionFalse, fmt.Sprintf("%s. %s", msg, err.Error()))
 	} else {
 		cr.Status.Conditions.SetReady(v14.ConditionFalse, msg)
 	}
-	return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
+	return ctrl.Result{}, r.Status().Update(ctx, cr)
 }
 
 func (r *KeycloakReconciler) HandleSuccess(ctx context.Context, cr *ssov1alpha1.Keycloak) (ctrl.Result, error) {
-	original := cr.DeepCopy()
 	cr.Status.Conditions.SetReady(v14.ConditionTrue)
-	return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
+	return ctrl.Result{}, r.Status().Update(ctx, cr)
 }
 
 // SetupWithManager sets up the controller with the Manager.

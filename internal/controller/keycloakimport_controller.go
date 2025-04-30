@@ -20,15 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/stakater/rhbk-operator/internal/resources/realm"
-	"github.com/stakater/rhbk-operator/internal/resources/rhbk"
-
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
 	"github.com/go-logr/logr"
-	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
-	"github.com/stakater/rhbk-operator/internal/constants"
-	"github.com/stakater/rhbk-operator/internal/resources"
 	v1 "k8s.io/api/apps/v1"
 	v14 "k8s.io/api/batch/v1"
 	v13 "k8s.io/api/core/v1"
@@ -39,11 +31,18 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
+	"github.com/stakater/rhbk-operator/internal/constants"
+	"github.com/stakater/rhbk-operator/internal/resources"
+	"github.com/stakater/rhbk-operator/internal/resources/realm"
+	"github.com/stakater/rhbk-operator/internal/resources/rhbk"
 )
 
 const RealmImportFinalizer = "rhbk.stakater.com/finalizer"
@@ -170,7 +169,7 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 		err = r.Create(ctx, importJob)
 		if err != nil {
-			return r.HandleError(ctx, cr, err, "Failed to create import job")
+			return ctrl.Result{Requeue: true}, err
 		}
 
 		return r.HandleError(ctx, cr, err, "Wait for new import job to be ready")
@@ -179,22 +178,23 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if !resources.MatchSet(statefulSet.Spec.Template.Annotations, map[string]string{
 		realm.GetImportJobAnnotation(cr): importSecret.Resource.ResourceVersion,
 	}) && resources.IsJobCompleted(found) {
-		return ctrl.Result{}, r.rolloutChanges(ctx, cr, statefulSet, importSecret.Resource.ResourceVersion)
+		err = r.rolloutChanges(ctx, cr, statefulSet, importSecret.Resource.ResourceVersion)
+		if err != nil {
+			return ctrl.Result{Requeue: true}, err
+		}
 	}
 
 	return r.HandleSuccess(ctx, cr)
 }
 
 func (r *KeycloakImportReconciler) rolloutChanges(ctx context.Context, kci *ssov1alpha1.KeycloakImport, statefulSet *v1.StatefulSet, version string) error {
-	original := statefulSet.DeepCopy()
-
 	if statefulSet.Spec.Template.Annotations == nil {
 		statefulSet.Spec.Template.Annotations = make(map[string]string)
 	}
 
 	statefulSet.Spec.Template.Annotations[realm.GetImportJobAnnotation(kci)] = version
 
-	return r.Patch(ctx, statefulSet, client.MergeFrom(original))
+	return r.Update(ctx, statefulSet)
 }
 
 func (r *KeycloakImportReconciler) cleanupExternalResources(ctx context.Context, cr *ssov1alpha1.KeycloakImport) error {
@@ -231,20 +231,18 @@ func (r *KeycloakImportReconciler) cleanupExternalResources(ctx context.Context,
 }
 
 func (r *KeycloakImportReconciler) HandleError(ctx context.Context, cr *ssov1alpha1.KeycloakImport, err error, msg string) (ctrl.Result, error) {
-	original := cr.DeepCopy()
 	if err != nil {
 		cr.Status.Conditions.SetReady(v12.ConditionFalse, fmt.Sprintf("%s. %s", msg, err.Error()))
 	} else {
 		cr.Status.Conditions.SetReady(v12.ConditionFalse, msg)
 	}
 
-	return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
+	return ctrl.Result{}, r.Status().Update(ctx, cr)
 }
 
 func (r *KeycloakImportReconciler) HandleSuccess(ctx context.Context, cr *ssov1alpha1.KeycloakImport) (ctrl.Result, error) {
-	original := cr.DeepCopy()
 	cr.Status.Conditions.SetReady(v12.ConditionTrue)
-	return ctrl.Result{}, r.Status().Patch(ctx, cr, client.MergeFrom(original))
+	return ctrl.Result{}, r.Status().Update(ctx, cr)
 }
 
 // SetupWithManager sets up the controller with the Manager.

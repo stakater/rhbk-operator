@@ -1,0 +1,6 @@
+apiVersion: sso.stakater.com/v1alpha1
+kind: Keycloak
+metadata:
+  name: {{ .name }}
+spec:
+  instances: 1

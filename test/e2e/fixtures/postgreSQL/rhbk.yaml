@@ -1,0 +1,24 @@
+apiVersion: sso.stakater.com/v1alpha1
+kind: Keycloak
+metadata:
+  name: {{ .name }}
+spec:
+  instances: 1
+  admin:
+    username:
+      secret:
+        name: {{ .adminSecret }}
+        key: username
+    password:
+      secret:
+        name: {{ .adminSecret }}
+        key: password
+  database:
+    host: 
+      value: "{{ .dbHost }}"
+    port: 
+      value: "5432"
+    user: 
+      value: "{{ .dbUser }}"
+    password: 
+      value: "{{ .dbPassword }}"

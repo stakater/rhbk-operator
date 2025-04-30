@@ -19,26 +19,23 @@ package controller
 import (
 	"context"
 
-	"github.com/stakater/rhbk-operator/internal/resources/realm"
-	"github.com/stakater/rhbk-operator/internal/resources/rhbk"
-
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	"github.com/redhat-cop/operator-utils/pkg/util/apis"
-	"github.com/stakater/rhbk-operator/internal/constants"
-	"github.com/stakater/rhbk-operator/internal/resources"
-	"github.com/stakater/rhbk-operator/test/utils/yaml"
 	v13 "k8s.io/api/apps/v1"
 	v12 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
+	"github.com/stakater/rhbk-operator/internal/constants"
+	"github.com/stakater/rhbk-operator/internal/resources"
+	"github.com/stakater/rhbk-operator/internal/resources/realm"
+	"github.com/stakater/rhbk-operator/internal/resources/rhbk"
+	"github.com/stakater/rhbk-operator/test/utils"
 )
 
 var _ = Describe("KeycloakImport Controller", func() {
@@ -59,7 +56,7 @@ var _ = Describe("KeycloakImport Controller", func() {
 			By("creating the custom resource for the Kind Keycloak")
 			err := k8sClient.Get(ctx, kclient.ObjectKeyFromObject(keycloak), keycloak)
 			if err != nil && errors.IsNotFound(err) {
-				yaml.GetResourceFromFile("keycloak.yaml", keycloak)
+				utils.GetResourceFromFile("keycloak.yaml", keycloak)
 				Expect(k8sClient.Create(ctx, keycloak)).To(Succeed())
 			}
 
@@ -84,11 +81,11 @@ var _ = Describe("KeycloakImport Controller", func() {
 			}
 
 			By("creating the realm import secret")
-			yaml.GetResourceFromFile("realm-secret.yaml", realmSecret)
+			utils.GetResourceFromFile("realm-secret.yaml", realmSecret)
 			Expect(k8sClient.Create(ctx, realmSecret)).To(Succeed())
 
 			By("creating the custom resource for the Kind KeycloakImport")
-			yaml.GetResourceFromFile("keycloak-import.yaml", keycloakImport)
+			utils.GetResourceFromFile("keycloak-import.yaml", keycloakImport)
 			Expect(k8sClient.Create(ctx, keycloakImport)).To(Succeed())
 		})
 

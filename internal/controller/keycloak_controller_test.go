@@ -22,14 +22,15 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	route "github.com/openshift/api/route/v1"
-	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
-	"github.com/stakater/rhbk-operator/test/utils/yaml"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
+	"github.com/stakater/rhbk-operator/test/utils"
 )
 
 var _ = Describe("Keycloak Controller", func() {
@@ -52,7 +53,7 @@ var _ = Describe("Keycloak Controller", func() {
 			By("creating the custom resource for the Kind Keycloak")
 			err := k8sClient.Get(ctx, client.ObjectKeyFromObject(keycloak), keycloak)
 			if err != nil && errors.IsNotFound(err) {
-				yaml.GetResourceFromFile("keycloak.yaml", keycloak)
+				utils.GetResourceFromFile("keycloak.yaml", keycloak)
 				Expect(k8sClient.Create(ctx, keycloak)).To(Succeed())
 			}
 		})

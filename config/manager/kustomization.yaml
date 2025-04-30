@@ -3,6 +3,6 @@ resources:
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
-- name: controller
-  newName: ghcr.io/stakater/rhbk-operator
-  newTag: v0.0.1
+- digest: sha256:efa8411a98e27655e83f16b809767269278e509858696f3d1f66027695935037
+  name: controller
+  newName: image-registry.openshift-image-registry.svc:5000/rhbk-operator-system/rhbk
