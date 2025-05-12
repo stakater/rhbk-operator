@@ -7,7 +7,6 @@ import (
 
 	v1 "k8s.io/api/apps/v1"
 	v12 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -27,6 +26,7 @@ type RHBKStatefulSet struct {
 	HostName string
 	Scheme   *runtime.Scheme
 	Resource *v1.StatefulSet
+	Sizing   []*v1alpha1.RealmSizing
 }
 
 func GetStatefulSetName(cr *v1alpha1.Keycloak) string {
@@ -152,6 +152,18 @@ func (ks *RHBKStatefulSet) DecorateVolumeMounts(mounts []v12.VolumeMount) []v12.
 	return mounts
 }
 
+func (ks *RHBKStatefulSet) decorateSizing(sizing []*v1alpha1.RealmSizing) v12.ResourceRequirements {
+	defaultSizing := v1alpha1.RealmSizing{
+		LoginsPerSecond:                  15,
+		ClientCredentialsGrantsPerSecond: 120,
+		RefreshTokenGrantsPerSecond:      120,
+		CachedSessions:                   10000,
+	}
+
+	sum := v1alpha1.SumSizing(sizing, &defaultSizing)
+	return sum.CalculateResourceLimits(ks.Keycloak.Spec.Instances)
+}
+
 func (ks *RHBKStatefulSet) Build() error {
 	defaultLabels := map[string]string{}
 	resources.DecorateDefaultLabels(defaultLabels)
@@ -255,14 +267,7 @@ func (ks *RHBKStatefulSet) Build() error {
 								Value: "/mnt/certificates/tls.key",
 							},
 						}),
-						Resources: v12.ResourceRequirements{
-							Requests: v12.ResourceList{
-								v12.ResourceMemory: resource.MustParse("1700Mi"),
-							},
-							Limits: v12.ResourceList{
-								v12.ResourceMemory: resource.MustParse("2Gi"),
-							},
-						},
+						Resources: ks.decorateSizing(ks.Sizing),
 						LivenessProbe: &v12.Probe{
 							ProbeHandler: v12.ProbeHandler{
 								HTTPGet: &v12.HTTPGetAction{

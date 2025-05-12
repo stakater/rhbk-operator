@@ -39,6 +39,10 @@ type KeycloakImportSpec struct {
 	// +optional
 	// Override if realm already exists
 	OverrideIfExists bool `json:"overrideIfExists,omitempty"`
+
+	// +optional
+	// Realm sizing
+	Sizing *RealmSizing `json:"sizing,omitempty"`
 }
 
 func (ki *KeycloakImportSpec) HasSecretReference(secretName string) bool {
