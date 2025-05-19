@@ -9,32 +9,36 @@ import (
 	. "github.com/onsi/gomega"
 	deploymentConfig "github.com/openshift/api/apps/v1"
 	v13 "github.com/openshift/api/route/v1"
+	v14 "k8s.io/api/apps/v1"
 	v12 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/stakater/rhbk-operator/api/v1alpha1"
+	"github.com/stakater/rhbk-operator/internal/resources"
+	realm2 "github.com/stakater/rhbk-operator/internal/resources/realm"
 	"github.com/stakater/rhbk-operator/test/utils"
 )
 
-var _ = Describe("RHBK", Ordered, func() {
-	const rhbkNs = "rhbk-instance"
-	realmNs := "e2e-realm"
+var _ = Describe("RHBK sizing", Ordered, func() {
+	const rhbkNs = "rhbk-instance-sizing"
+	realmNs := "e2e-realm-special-chars"
 	var kc *utils.Keycloak
 
 	rhbkVars := map[string]interface{}{
-		"name":        "e2e-rhbk",
-		"dbUser":      "e2e",
-		"dbPassword":  "test123",
-		"adminSecret": "admin-secret",
-		"dbHost":      "e2e-rhbk",
+		"name":             "e2e-rhbk",
+		"dbUser":           "e2e",
+		"dbPassword":       "test123",
+		"adminSecret":      "admin-secret",
+		"dbHost":           "e2e-rhbk",
+		"disableCPULimits": false,
 	}
 
 	realmVars := map[string]interface{}{
-		"name":              "simple-realm",
+		"name":              "special-chars-realm",
 		"rhbkName":          rhbkVars["name"].(string),
 		"rhbkNamespace":     rhbkNs,
-		"replacementSecret": "simple-realm-secret",
-		"secretValue":       base64.StdEncoding.EncodeToString([]byte("simple-realm")),
+		"replacementSecret": "special-chars-realm-secret",
+		"secretValue":       base64.StdEncoding.EncodeToString([]byte(`P@ssw0rd!@#$%^&*()"`)),
 		"realmEnabled":      true,
 	}
 
@@ -87,7 +91,7 @@ var _ = Describe("RHBK", Ordered, func() {
 			utils.ApplyFixtureTemplate("./test/e2e/fixtures/postgreSQL/admin-secret.yaml", rhbkNs, rhbkVars)
 
 			By("deploying rhbk instance")
-			utils.ApplyFixtureTemplate("./test/e2e/fixtures/postgreSQL/rhbk.yaml", rhbkNs, rhbkVars)
+			utils.ApplyFixtureTemplate("./test/e2e/fixtures/postgreSQL/rhbk_sized.yaml", rhbkNs, rhbkVars)
 			rhbk := &v1alpha1.Keycloak{
 				ObjectMeta: v1.ObjectMeta{
 					Name:      "e2e-rhbk",
@@ -98,6 +102,18 @@ var _ = Describe("RHBK", Ordered, func() {
 				return rhbk.Status.IsReady()
 			}, "5m", "1s")
 			utils.MatchYAMLResource(rhbk, "rhbk", "instance")
+
+			By("checking rhbk deployment sizing")
+			rhbk_sts := &v14.StatefulSet{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      rhbkVars["name"].(string),
+					Namespace: rhbkNs,
+				},
+			}
+			utils.WaitForResource(rhbk_sts, func() bool {
+				return resources.IsStatefulSetReady(rhbk_sts)
+			}, "5m", "1s")
+			utils.MatchJsonResource(rhbk_sts.Spec.Template.Spec.Containers[0].Resources, "ResourceLimit", "rhbk", "deployment", "limit")
 
 			By("logging in to rhbk instance")
 			adminSecret := &v12.Secret{
@@ -150,8 +166,24 @@ var _ = Describe("RHBK", Ordered, func() {
 			utils.WaitForResource(realm, func() bool {
 				return realm.Status.IsReady()
 			}, "1m", "1s")
-
 			utils.MatchYAMLResource(realm, "realm", "import")
+
+			By("checking realm template secret")
+			realmTemplateSecret := &v12.Secret{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      realm2.GetImportJobSecretName(realm),
+					Namespace: rhbkNs,
+				},
+			}
+			utils.WaitForResource(realmTemplateSecret, func() bool {
+				return len(realmTemplateSecret.Data) > 0
+			}, "1m", "1s")
+
+			decodedData := make(map[string]string)
+			for key, value := range realmTemplateSecret.Data {
+				decodedData[key] = string(value)
+			}
+			utils.MatchJsonResource(decodedData, "secret", "realm", "import")
 
 			By("checking realm")
 			var realmImport *gocloak.RealmRepresentation
@@ -164,37 +196,6 @@ var _ = Describe("RHBK", Ordered, func() {
 			decodedValue, err := base64.StdEncoding.DecodeString(realmVars["secretValue"].(string))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(*realmImport.DisplayName).To(Equal(string(decodedValue)))
-		})
-
-		It("should update realm when secret is updated", func() {
-			By("updating secrets")
-			displayName := "e2e-realm-updated"
-			realmVars["secretValue"] = base64.StdEncoding.EncodeToString([]byte(displayName))
-			utils.ApplyFixtureTemplate("./test/e2e/fixtures/realm-import/replacement_secret.yaml", realmNs, realmVars)
-
-			By("checking updated realm")
-			Eventually(func() error {
-				res, err := kc.GetRealm(realmVars["name"].(string))
-				if err != nil || *res.DisplayName != displayName {
-					return fmt.Errorf("Waiting for realm to be synced")
-				}
-				return err
-			}, "3m", "1s").ShouldNot(HaveOccurred())
-		})
-
-		It("should update realm when spec is updated", func() {
-			By("updating realm enabled status")
-			realmVars["realmEnabled"] = false
-			utils.ApplyFixtureTemplate("./test/e2e/fixtures/realm-import/realm.yaml", realmNs, realmVars)
-
-			By("checking updated realm enabled status")
-			Eventually(func() error {
-				res, err := kc.GetRealm(realmVars["name"].(string))
-				if err != nil || res.Enabled != nil && !*res.Enabled {
-					return fmt.Errorf("Waiting for realm to be synced")
-				}
-				return err
-			}, "3m", "1s").ShouldNot(HaveOccurred())
 		})
 	})
 })

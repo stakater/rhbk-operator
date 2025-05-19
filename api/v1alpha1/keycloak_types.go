@@ -50,6 +50,10 @@ type KeycloakSpec struct {
 	// Configurations for hostname related options
 	// Default proxy is false
 	NetworkConfig *NetworkConfig `json:"networkOptions,omitempty"`
+
+	// +optional
+	// Realm sizing
+	Sizing *RealmSizing `json:"sizing,omitempty"`
 }
 
 type NetworkConfig struct {

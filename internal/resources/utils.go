@@ -85,3 +85,13 @@ func AddOrReplaceEnv(env v13.EnvVar, vars []v13.EnvVar) []v13.EnvVar {
 
 	return vars
 }
+
+// EscapeString escapes a value using json.Marshal to ensure it's properly escaped.
+func EscapeString(value string) (string, error) {
+	b, err := json.Marshal(value)
+	if err != nil {
+		return "", fmt.Errorf("failed to escape value: %w", err)
+	}
+	// Remove the surrounding quotes that json.Marshal adds
+	return string(b[1 : len(b)-1]), nil
+}

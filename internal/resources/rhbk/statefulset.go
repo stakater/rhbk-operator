@@ -7,6 +7,7 @@ import (
 
 	v1 "k8s.io/api/apps/v1"
 	v12 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -152,16 +153,19 @@ func (ks *RHBKStatefulSet) DecorateVolumeMounts(mounts []v12.VolumeMount) []v12.
 	return mounts
 }
 
-func (ks *RHBKStatefulSet) decorateSizing(sizing []*v1alpha1.RealmSizing) v12.ResourceRequirements {
-	defaultSizing := v1alpha1.RealmSizing{
-		LoginsPerSecond:                  15,
-		ClientCredentialsGrantsPerSecond: 120,
-		RefreshTokenGrantsPerSecond:      120,
-		CachedSessions:                   10000,
+func (ks *RHBKStatefulSet) decorateSizing() v12.ResourceRequirements {
+	if ks.Keycloak.Spec.Sizing == nil {
+		return v12.ResourceRequirements{
+			Requests: v12.ResourceList{
+				v12.ResourceMemory: resource.MustParse("1700Mi"),
+			},
+			Limits: v12.ResourceList{
+				v12.ResourceMemory: resource.MustParse("2Gi"),
+			},
+		}
 	}
 
-	sum := v1alpha1.SumSizing(sizing, &defaultSizing)
-	return sum.CalculateResourceLimits(ks.Keycloak.Spec.Instances)
+	return ks.Keycloak.Spec.Sizing.CalculateResourceLimits(ks.Keycloak.Spec.Instances)
 }
 
 func (ks *RHBKStatefulSet) Build() error {
@@ -267,7 +271,7 @@ func (ks *RHBKStatefulSet) Build() error {
 								Value: "/mnt/certificates/tls.key",
 							},
 						}),
-						Resources: ks.decorateSizing(ks.Sizing),
+						Resources: ks.decorateSizing(),
 						LivenessProbe: &v12.Probe{
 							ProbeHandler: v12.ProbeHandler{
 								HTTPGet: &v12.HTTPGetAction{

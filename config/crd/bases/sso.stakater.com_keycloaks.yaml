@@ -321,6 +321,34 @@ spec:
                   - url
                   type: object
                 type: array
+              sizing:
+                description: Realm sizing
+                properties:
+                  cachedSessions:
+                    description: Number of cached sessions, defaults to 10000
+                    format: int32
+                    type: integer
+                  clientCredentialsGrantsPerSecond:
+                    description: Number of clients to create
+                    format: int32
+                    type: integer
+                  disableCPULimits:
+                    description: Disable CPU limits to allow unlimited CPU usage
+                    type: boolean
+                  loginsPerSecond:
+                    description: Number of logins to create
+                    format: int32
+                    type: integer
+                  refreshTokenGrantsPerSecond:
+                    description: Number of users to create
+                    format: int32
+                    type: integer
+                required:
+                - cachedSessions
+                - clientCredentialsGrantsPerSecond
+                - loginsPerSecond
+                - refreshTokenGrantsPerSecond
+                type: object
               trustedCABundles:
                 description: Trusted CA bundle from configmap
                 properties:

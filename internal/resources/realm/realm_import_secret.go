@@ -7,18 +7,16 @@ import (
 	"strconv"
 	"text/template"
 
-	"k8s.io/apimachinery/pkg/labels"
-
-	"github.com/stakater/rhbk-operator/internal/resources"
-
-	"github.com/stakater/rhbk-operator/internal/constants"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/stakater/rhbk-operator/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	"github.com/stakater/rhbk-operator/api/v1alpha1"
+	"github.com/stakater/rhbk-operator/internal/constants"
+	"github.com/stakater/rhbk-operator/internal/resources"
 )
 
 type ImportRealmSecret struct {
@@ -57,7 +55,12 @@ func (s *ImportRealmSecret) CreateOrUpdate(ctx context.Context, c client.Client)
 			return err
 		}
 
-		s.substitutions[sub.Name] = string(secret.Data[sub.Secret.Key])
+		value := string(secret.Data[sub.Secret.Key])
+		escapedValue, err := resources.EscapeString(value)
+		if err != nil {
+			return fmt.Errorf("failed to escape value for key %s: %w", sub.Name, err)
+		}
+		s.substitutions[sub.Name] = escapedValue
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, c, s.Resource, s.MutateFn)

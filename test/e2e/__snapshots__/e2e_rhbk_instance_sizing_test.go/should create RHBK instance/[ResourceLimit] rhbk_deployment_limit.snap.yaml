@@ -1,0 +1,13 @@
+
+[RHBK sizing operator should create RHBK instance - 1]
+{
+ "limits": {
+  "cpu": "1458m",
+  "memory": "1360Mi"
+ },
+ "requests": {
+  "cpu": "583m",
+  "memory": "1250Mi"
+ }
+}
+---

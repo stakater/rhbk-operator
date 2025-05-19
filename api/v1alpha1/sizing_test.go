@@ -156,6 +156,25 @@ func TestRealmSizing_CalculateResourceLimits(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "disable CPU limits",
+			sizing: RealmSizing{
+				LoginsPerSecond:                  45,  // 3 vCPUs
+				ClientCredentialsGrantsPerSecond: 360, // 3 vCPUs
+				RefreshTokenGrantsPerSecond:      360, // 3 vCPUs
+				DisableCPULimits:                 true,
+			},
+			instances: 3,
+			want: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    *resource.NewMilliQuantity(3000, resource.DecimalSI),
+					corev1.ResourceMemory: *resource.NewQuantity(1250*1024*1024, resource.BinarySI),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: *resource.NewQuantity(1360*1024*1024, resource.BinarySI),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -171,10 +190,16 @@ func TestRealmSizing_CalculateResourceLimits(t *testing.T) {
 			}
 
 			// Test CPU limits
-			if got.Limits.Cpu().MilliValue() != tt.want.Limits.Cpu().MilliValue() {
-				t.Errorf("CalculateResourceLimits() CPU Limit = %v, want %v",
-					got.Limits.Cpu().MilliValue(),
-					tt.want.Limits.Cpu().MilliValue())
+			if tt.sizing.DisableCPULimits {
+				if _, exists := got.Limits[corev1.ResourceCPU]; exists {
+					t.Errorf("CalculateResourceLimits() should not have CPU limits when DisableCPULimits is true")
+				}
+			} else {
+				if got.Limits.Cpu().MilliValue() != tt.want.Limits.Cpu().MilliValue() {
+					t.Errorf("CalculateResourceLimits() CPU Limit = %v, want %v",
+						got.Limits.Cpu().MilliValue(),
+						tt.want.Limits.Cpu().MilliValue())
+				}
 			}
 
 			// Test Memory requests

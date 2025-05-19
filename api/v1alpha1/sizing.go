@@ -21,6 +21,10 @@ type RealmSizing struct {
 
 	// Number of cached sessions, defaults to 10000
 	CachedSessions int32 `json:"cachedSessions"`
+
+	// +optional
+	// Disable CPU limits to allow unlimited CPU usage
+	DisableCPULimits bool `json:"disableCPULimits,omitempty"`
 }
 
 // CalculateResourceLimits calculates the required resource limits based on the sizing configuration
@@ -60,16 +64,22 @@ func (r *RealmSizing) CalculateResourceLimits(instances *int32) corev1.ResourceR
 	// CPU limit includes 150% headroom
 	cpuLimit := int64(cpuCores * 2.5 * 1000)
 
-	return corev1.ResourceRequirements{
+	requirements := corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceCPU:    *resource.NewMilliQuantity(cpuRequest, resource.DecimalSI),
 			corev1.ResourceMemory: *resource.NewQuantity(baseMemory*1024*1024, resource.BinarySI),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    *resource.NewMilliQuantity(cpuLimit, resource.DecimalSI),
 			corev1.ResourceMemory: *resource.NewQuantity(int64(math.Ceil(memoryLimitFloat/10)*10)*1024*1024, resource.BinarySI),
 		},
 	}
+
+	// Only add CPU limits if not disabled
+	if !r.DisableCPULimits {
+		requirements.Limits[corev1.ResourceCPU] = *resource.NewMilliQuantity(cpuLimit, resource.DecimalSI)
+	}
+
+	return requirements
 }
 
 // SumSizing sums all non-nil RealmSizing values and uses defaultSizing for nil values.

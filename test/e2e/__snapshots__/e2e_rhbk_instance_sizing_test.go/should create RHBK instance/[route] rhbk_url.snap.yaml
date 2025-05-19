@@ -1,0 +1,32 @@
+
+[RHBK sizing operator should create RHBK instance - 1]
+metadata:
+  name: e2e-rhbk
+  namespace: rhbk-instance-sizing
+  uid: <Any value>
+  resourceVersion: <Any value>
+  creationTimestamp: <Any value>
+  labels:
+    app: rhbk
+  annotations: <Any value>
+  ownerReferences: <Any value>
+  managedFields: <Any value>
+spec:
+  host: e2e-rhbk-rhbk-instance-sizing.apps.r5ftk5n2q.stakater.cloud
+  to:
+    kind: Service
+    name: e2e-rhbk-svc
+    weight: 100
+  port:
+    targetPort:
+      type: 1
+      intval: 0
+      strval: https
+  tls:
+    termination: reencrypt
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+status:
+  ingress: <Any value>
+
+---

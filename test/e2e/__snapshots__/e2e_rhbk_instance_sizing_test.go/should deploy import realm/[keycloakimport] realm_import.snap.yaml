@@ -1,0 +1,33 @@
+
+[RHBK sizing operator should deploy import realm - 1]
+metadata:
+  name: special-chars-realm
+  namespace: e2e-realm-special-chars
+  uid: <Any value>
+  resourceVersion: <Any value>
+  generation: 1
+  creationTimestamp: <Any value>
+  annotations: <Any value>
+  finalizers:
+    - rhbk.stakater.com/finalizer
+  managedFields: <Any value>
+spec:
+  keycloakInstance:
+    namespace: rhbk-instance-sizing
+    name: e2e-rhbk
+  json: "{\n  \"realm\": \"special-chars-realm\",\n  \"displayName\": \"%.DISPLAY_NAME%\",\n  \"enabled\": true\n}\n"
+  substitutions:
+    - name: DISPLAY_NAME
+      secret:
+        name: special-chars-realm-secret
+        key: displayName
+  overrideIfExists: true
+status:
+  conditions:
+    - type: ReconcileSuccess
+      status: "True"
+      lastTransitionTime: <Any value>
+      reason: LastReconcileCycleSucceded
+      message: ""
+
+---

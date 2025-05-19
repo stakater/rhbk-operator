@@ -88,3 +88,27 @@ func MatchResource(resource interface{}, kind string, snapshotName ...string) {
 		match.Any(exclude...).ErrOnMissingPath(false),
 	)
 }
+
+func MatchJsonResource(resource interface{}, kind string, snapshotName ...string) {
+	currentSpec := ginkgo.CurrentSpecReport()
+	name := strings.Join(snapshotName, "_")
+	if name == "" {
+		name = currentSpec.LeafNodeText
+	}
+
+	name = fmt.Sprintf("[%s] %s", kind, name)
+	exclude, ok := excludeFieldMap[kind]
+	if !ok {
+		exclude = excludeFields
+	}
+
+	snaps.WithConfig(
+		snaps.Dir(fmt.Sprintf("__snapshots__/%s/%s", filepath.Base(currentSpec.FileName()), currentSpec.LeafNodeText)),
+		snaps.Filename(name),
+		snaps.Ext(".yaml"),
+	).MatchJSON(
+		core.GinkgoT(),
+		resource,
+		match.Any(exclude...).ErrOnMissingPath(false),
+	)
+}
