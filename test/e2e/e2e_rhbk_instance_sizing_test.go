@@ -113,7 +113,13 @@ var _ = Describe("RHBK sizing", Ordered, func() {
 			utils.WaitForResource(rhbk_sts, func() bool {
 				return resources.IsStatefulSetReady(rhbk_sts)
 			}, "5m", "1s")
-			utils.MatchJsonResource(rhbk_sts.Spec.Template.Spec.Containers[0].Resources, "ResourceLimit", "rhbk", "deployment", "limit")
+			utils.MatchJsonResource(
+				rhbk_sts.Spec.Template.Spec.Containers[0].Resources,
+				"ResourceLimit",
+				"rhbk",
+				"deployment",
+				"limit",
+			)
 
 			By("logging in to rhbk instance")
 			adminSecret := &v12.Secret{
