@@ -2,5 +2,5 @@ schema: olm.channel
 package: rhbk-operator
 name: preview
 entries:
-  - name: rhbk-operator.v0.0.18
-    skipRange: ">=0.0.1 <0.0.18"
+  - name: rhbk-operator.v0.0.19
+    skipRange: ">=0.0.1 <0.0.19"

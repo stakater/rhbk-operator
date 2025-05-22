@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"strings"
 
 	v12 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/batch/v1"
@@ -87,7 +88,17 @@ func AddOrReplaceEnv(env v13.EnvVar, vars []v13.EnvVar) []v13.EnvVar {
 }
 
 // EscapeString escapes a value using json.Marshal to ensure it's properly escaped.
+// For PEM and key formats, it preserves newlines and special characters.
 func EscapeString(value string) (string, error) {
+	// Check if the string appears to be a PEM or key format
+	if strings.Contains(value, "-----BEGIN") || strings.Contains(value, "-----END") {
+		// For PEM/key formats, only escape quotes and backslashes
+		escaped := strings.ReplaceAll(value, `\`, `\\`)
+		escaped = strings.ReplaceAll(escaped, `"`, `\"`)
+		return escaped, nil
+	}
+
+	// For other strings, use json.Marshal
 	b, err := json.Marshal(value)
 	if err != nil {
 		return "", fmt.Errorf("failed to escape value: %w", err)

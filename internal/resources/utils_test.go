@@ -43,9 +43,21 @@ word`,
 			wantErr: false,
 		},
 		{
+			name:    "password with windows line ending",
+			input:   "pass\r\nword",
+			want:    `pass\r\nword`,
+			wantErr: false,
+		},
+		{
 			name:    "complex password",
 			input:   `P@ssw0rd!"#$%&'()*+,-./:;<=>?@[\]^_{|}~`,
 			want:    "P@ssw0rd!\\\"#$%\\u0026'()*+,-./:;\\u003c=\\u003e?@[\\\\]^_{|}~",
+			wantErr: false,
+		},
+		{
+			name:    "pem certificate format",
+			input:   "-----BEGIN CERTIFICATE-----\nMIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw\nTzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh\ncmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4\nWhcNMzUwNjA0MTEwNDM4WjBPMQswCQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJu\nZXQgU2VjdXJpdHkgUmVzZWFyY2ggR3JvdXAxFTATBgNVBAMTDElTUkcgUm9vdCBY\nMTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAK3oJHP0FDfzm54rVygc\nh77ct984kIxuPOZXoHj3dcKi/v1q1HpWi7i56j3j6KR1xjvn7p9aCWcRxPFhXFqM\n47OhiDijXa+sRporq0Wgx//hkuSzWHznYy2h2k7RkZinljCu2XnUlpfMk6Wcti8p\nDePeaa2it5u7GiNmwUjr0t6U14UoX6Hn4OBUBarjQ6/btjcaJiVKiH94jHg9zd2s\n-----END CERTIFICATE-----",
+			want:    "-----BEGIN CERTIFICATE-----\nMIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw\nTzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh\ncmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4\nWhcNMzUwNjA0MTEwNDM4WjBPMQswCQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJu\nZXQgU2VjdXJpdHkgUmVzZWFyY2ggR3JvdXAxFTATBgNVBAMTDElTUkcgUm9vdCBY\nMTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAK3oJHP0FDfzm54rVygc\nh77ct984kIxuPOZXoHj3dcKi/v1q1HpWi7i56j3j6KR1xjvn7p9aCWcRxPFhXFqM\n47OhiDijXa+sRporq0Wgx//hkuSzWHznYy2h2k7RkZinljCu2XnUlpfMk6Wcti8p\nDePeaa2it5u7GiNmwUjr0t6U14UoX6Hn4OBUBarjQ6/btjcaJiVKiH94jHg9zd2s\n-----END CERTIFICATE-----",
 			wantErr: false,
 		},
 	}
