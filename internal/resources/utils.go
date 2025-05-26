@@ -92,10 +92,7 @@ func AddOrReplaceEnv(env v13.EnvVar, vars []v13.EnvVar) []v13.EnvVar {
 func EscapeString(value string) (string, error) {
 	// Check if the string appears to be a PEM or key format
 	if strings.Contains(value, "-----BEGIN") || strings.Contains(value, "-----END") {
-		// For PEM/key formats, only escape quotes and backslashes
-		escaped := strings.ReplaceAll(value, `\`, `\\`)
-		escaped = strings.ReplaceAll(escaped, `"`, `\"`)
-		return escaped, nil
+		return value, nil
 	}
 
 	// For other strings, use json.Marshal
