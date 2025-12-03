@@ -20,7 +20,6 @@ import (
 	"github.com/stakater/rhbk-operator/internal/resources/realm"
 )
 
-const RHBKImage = "registry.redhat.io/rhbk/keycloak-rhel9:26.0-6"
 
 type RHBKStatefulSet struct {
 	Keycloak *v1alpha1.Keycloak
@@ -200,7 +199,7 @@ func (ks *RHBKStatefulSet) Build() error {
 				Containers: []v12.Container{
 					{
 						Name:            constants.RHBKContainerName,
-						Image:           RHBKImage,
+						Image:           constants.RHBKImage,
 						ImagePullPolicy: v12.PullAlways,
 						Args: []string{
 							fmt.Sprintf("-Djgroups.dns.query=%s.%s", GetDiscoverySvcName(ks.Keycloak), ks.Keycloak.Namespace),
