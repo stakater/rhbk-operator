@@ -20,7 +20,6 @@ import (
 	"github.com/stakater/rhbk-operator/internal/resources/realm"
 )
 
-
 type RHBKStatefulSet struct {
 	Keycloak *v1alpha1.Keycloak
 	HostName string
