@@ -198,7 +198,7 @@ func (ks *RHBKStatefulSet) Build() error {
 				Containers: []v12.Container{
 					{
 						Name:            constants.RHBKContainerName,
-						Image:           constants.RHBKImage,
+						Image:           fmt.Sprintf("registry.redhat.io/rhbk/keycloak-rhel9:%s", ks.Keycloak.Spec.Version),
 						ImagePullPolicy: v12.PullAlways,
 						Args: []string{
 							fmt.Sprintf("-Djgroups.dns.query=%s.%s", GetDiscoverySvcName(ks.Keycloak), ks.Keycloak.Namespace),

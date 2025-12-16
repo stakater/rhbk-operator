@@ -23,6 +23,11 @@ import (
 
 // KeycloakSpec defines the desired state of Keycloak
 type KeycloakSpec struct {
+	// +optional
+	// Keycloak version to install; default is 26.0-6
+	//+kubebuilder:default:="26.0-6"
+	Version string `json:"version,omitempty"`
+
 	// +required
 	// PostgreSQL Database configurations
 	Database *PostgresDatabase `json:"database"`
