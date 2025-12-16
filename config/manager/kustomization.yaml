@@ -3,6 +3,6 @@ resources:
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
-- digest: sha256:09624686e1e4617985325f0c85e574f61c52e9c8ea34dc842b9c92255c9d22d2
+- digest: sha256:4237e7749edaedb8ffc9546ceec6b8523ff47ab14709f5d4df0d0804c5ecc905
   name: controller
   newName: image-registry.openshift-image-registry.svc:5000/rhbk-operator-system/rhbk

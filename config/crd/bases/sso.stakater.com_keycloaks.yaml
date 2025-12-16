@@ -363,6 +363,10 @@ spec:
                     type: string
                 type: object
                 x-kubernetes-map-type: atomic
+              version:
+                default: 26.0-6
+                description: Keycloak version to install; default is 26.0-6
+                type: string
             required:
             - database
             - instances

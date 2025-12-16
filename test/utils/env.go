@@ -52,7 +52,7 @@ func (env *E2ETestEnv) Setup() error {
 	var err error
 	env.restConfig, err = env.Environment.Start()
 	if err != nil || env.restConfig == nil {
-		return fmt.Errorf("failed to setup rest-config")
+		return fmt.Errorf("failed to setup rest-config: %w", err)
 	}
 
 	err = v1alpha1.AddToScheme(env.Scheme)
