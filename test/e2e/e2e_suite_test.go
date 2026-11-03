@@ -24,7 +24,6 @@ import (
 	"github.com/gkampitakis/go-snaps/snaps"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	deploymentConfig "github.com/openshift/api/apps/v1"
 	route "github.com/openshift/api/route/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -53,12 +52,6 @@ func setup() {
 	utils.TestEnvironment = utils.NewE2ETestEnv("rhbk")
 
 	err := route.AddToScheme(utils.TestEnvironment.Scheme)
-	if err != nil {
-		fmt.Printf("Test setup failed: %v\n", err)
-		os.Exit(1)
-	}
-
-	err = deploymentConfig.AddToScheme(utils.TestEnvironment.Scheme)
 	if err != nil {
 		fmt.Printf("Test setup failed: %v\n", err)
 		os.Exit(1)

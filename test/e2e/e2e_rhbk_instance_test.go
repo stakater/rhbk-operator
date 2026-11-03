@@ -7,7 +7,6 @@ import (
 	"github.com/Nerzal/gocloak/v12"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	deploymentConfig "github.com/openshift/api/apps/v1"
 	v13 "github.com/openshift/api/route/v1"
 	v12 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -63,25 +62,6 @@ var _ = Describe("RHBK", Ordered, func() {
 				rhbkVars["dbPassword"].(string),
 				rhbkNs,
 			)
-			deploymentConfig := &deploymentConfig.DeploymentConfig{
-				ObjectMeta: v1.ObjectMeta{
-					Name:      rhbkVars["name"].(string),
-					Namespace: rhbkNs,
-				},
-			}
-
-			utils.WaitForResource(deploymentConfig, func() bool {
-				for _, condition := range deploymentConfig.Status.Conditions {
-					if condition.Type == "Progressing" && condition.Status == v12.ConditionFalse {
-						return false
-					}
-
-					if condition.Type == "Available" && condition.Status == v12.ConditionTrue {
-						return true
-					}
-				}
-				return false
-			}, "2m", "1s")
 
 			By("deploying admin secrets")
 			utils.ApplyFixtureTemplate("./test/e2e/fixtures/postgreSQL/admin-secret.yaml", rhbkNs, rhbkVars)
