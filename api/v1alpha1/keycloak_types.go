@@ -59,6 +59,22 @@ type KeycloakSpec struct {
 	// +optional
 	// Realm sizing
 	Sizing *RealmSizing `json:"sizing,omitempty"`
+
+	// +optional
+	// Policy for which namespaces may import realms into this instance via
+	// KeycloakImport. Imports from the instance's own namespace are always
+	// allowed. When unset, only same-namespace imports are allowed.
+	RealmImportPolicy *RealmImportPolicy `json:"realmImportPolicy,omitempty"`
+}
+
+// RealmImportPolicy declares which source namespaces a Keycloak instance
+// accepts KeycloakImport resources from. It is the instance owner's opt-in:
+// only someone who can edit the target Keycloak CR can widen it.
+type RealmImportPolicy struct {
+	// +optional
+	// Namespaces allowed to import realms into this instance. "*" allows all
+	// namespaces.
+	AllowedNamespaces []string `json:"allowedNamespaces,omitempty"`
 }
 
 type NetworkConfig struct {
@@ -107,6 +123,28 @@ type SecretOption struct {
 // KeycloakStatus defines the observed state of Keycloak
 type KeycloakStatus struct {
 	Conditions `json:",inline"`
+}
+
+// AllowsImportFrom reports whether a KeycloakImport in sourceNamespace may
+// import realms into this instance. Same-namespace imports are always
+// allowed; cross-namespace imports require the instance to list the source
+// namespace (or "*") in spec.realmImportPolicy.allowedNamespaces.
+func (kc *Keycloak) AllowsImportFrom(sourceNamespace string) bool {
+	if sourceNamespace == kc.Namespace {
+		return true
+	}
+
+	if kc.Spec.RealmImportPolicy == nil {
+		return false
+	}
+
+	for _, ns := range kc.Spec.RealmImportPolicy.AllowedNamespaces {
+		if ns == "*" || ns == sourceNamespace {
+			return true
+		}
+	}
+
+	return false
 }
 
 //+kubebuilder:object:root=true

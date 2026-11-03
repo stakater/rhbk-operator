@@ -57,6 +57,10 @@ var _ = Describe("KeycloakImport Controller", func() {
 						Host: ssov1alpha1.SecretOption{Value: "rhbk-pguser-rhbk"},
 						Port: ssov1alpha1.SecretOption{Value: "5432"},
 					},
+					// The import CR below lives in rhbk-import; the instance must opt in (SEC.1)
+					RealmImportPolicy: &ssov1alpha1.RealmImportPolicy{
+						AllowedNamespaces: []string{"rhbk-import"},
+					},
 				},
 			}
 
@@ -168,6 +172,55 @@ var _ = Describe("KeycloakImport Controller", func() {
 
 			ReconcileKeycloakImport(ctx, keycloakImport)
 			Expect(keycloakImport.Status.IsReady()).To(BeTrue())
+		})
+
+		It("should deny a cross-namespace import the target instance has not allowed", func() {
+			privateKeycloak := &ssov1alpha1.Keycloak{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "keycloak-private",
+					Namespace: "rhbk-instance",
+				},
+				Spec: ssov1alpha1.KeycloakSpec{
+					Instances: &[]int32{1}[0],
+					Database: &ssov1alpha1.PostgresDatabase{
+						Host: ssov1alpha1.SecretOption{Value: "rhbk-pguser-rhbk"},
+						Port: ssov1alpha1.SecretOption{Value: "5432"},
+					},
+					// No realmImportPolicy: same-namespace imports only
+				},
+			}
+			Expect(k8sClient.Create(ctx, privateKeycloak)).To(Succeed())
+			defer DeleteIfExist(ctx, privateKeycloak)
+
+			crossNsImport := &ssov1alpha1.KeycloakImport{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "hostile-import",
+					Namespace: "rhbk-import",
+				},
+				Spec: ssov1alpha1.KeycloakImportSpec{
+					KeycloakInstance: ssov1alpha1.KeycloakInstance{
+						Name:      privateKeycloak.Name,
+						Namespace: privateKeycloak.Namespace,
+					},
+					OverrideIfExists: true,
+					JSON:             `{"realm": "takeover"}`,
+				},
+			}
+			Expect(k8sClient.Create(ctx, crossNsImport)).To(Succeed())
+			defer DeleteIfExist(ctx, crossNsImport)
+
+			SetKeycloakReady(ctx, kclient.ObjectKeyFromObject(privateKeycloak), metav1.ConditionTrue)
+			ReconcileKeycloakImport(ctx, crossNsImport)
+
+			Expect(crossNsImport.Status.IsReady()).To(BeFalse())
+			Expect(crossNsImport.Status.ConditionMsg(apis.ReconcileSuccess)).To(
+				ContainSubstring("cross-namespace import denied"))
+
+			By("no import secret may be created in the target namespace")
+			Expect(GetImportSecret(ctx, crossNsImport)).To(BeNil())
+
+			By("no import job may be created in the target namespace")
+			Expect(GetImportJob(ctx, crossNsImport)).To(BeNil())
 		})
 	})
 })

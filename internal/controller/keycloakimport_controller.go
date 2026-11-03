@@ -112,6 +112,15 @@ func (r *KeycloakImportReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return r.HandleError(ctx, cr, err, "Failed to fetch RHBK instance")
 	}
 
+	// Tenant isolation (SEC.1): only the target instance's owner can allow
+	// imports from other namespaces, via spec.realmImportPolicy.
+	if !keycloak.AllowsImportFrom(cr.Namespace) {
+		return r.HandleError(ctx, cr, nil, fmt.Sprintf(
+			"cross-namespace import denied: Keycloak instance %s/%s does not allow imports from namespace %s; "+
+				"the instance owner must list it in spec.realmImportPolicy.allowedNamespaces",
+			keycloak.Namespace, keycloak.Name, cr.Namespace))
+	}
+
 	// Don't do anything if rhbk instance is not ready
 	if !keycloak.Status.Conditions.IsReady() {
 		return r.HandleError(ctx, cr, err, "RHBK instance not ready")

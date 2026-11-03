@@ -31,6 +31,7 @@ var _ = Describe("RHBK sizing", Ordered, func() {
 		"adminSecret":      "admin-secret",
 		"dbHost":           "e2e-rhbk",
 		"disableCPULimits": false,
+		"realmNamespace":   realmNs,
 	}
 
 	realmVars := map[string]interface{}{
