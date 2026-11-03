@@ -45,17 +45,22 @@ func (s *ImportRealmSecret) CreateOrUpdate(ctx context.Context, c client.Client)
 	// Fetch substitutions
 	s.substitutions = make(map[string]string)
 	for _, sub := range s.ImportCR.Spec.Substitutions {
-		secret := &v1.Secret{}
-		err := c.Get(ctx, client.ObjectKey{
-			Name:      sub.Secret.Name,
-			Namespace: s.ImportCR.Namespace,
-		}, secret)
+		var value string
+		if sub.Secret != nil {
+			secret := &v1.Secret{}
+			err := c.Get(ctx, client.ObjectKey{
+				Name:      sub.Secret.Name,
+				Namespace: s.ImportCR.Namespace,
+			}, secret)
 
-		if err != nil {
-			return err
+			if err != nil {
+				return err
+			}
+
+			value = string(secret.Data[sub.Secret.Key])
+		} else {
+			value = sub.Value
 		}
-
-		value := string(secret.Data[sub.Secret.Key])
 		escapedValue, err := resources.EscapeString(value)
 		if err != nil {
 			return fmt.Errorf("failed to escape value for key %s: %w", sub.Name, err)

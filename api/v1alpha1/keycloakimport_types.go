@@ -43,7 +43,7 @@ type KeycloakImportSpec struct {
 
 func (ki *KeycloakImportSpec) HasSecretReference(secretName string) bool {
 	for _, substitution := range ki.Substitutions {
-		if substitution.Secret.Name == secretName {
+		if substitution.Secret != nil && substitution.Secret.Name == secretName {
 			return true
 		}
 	}

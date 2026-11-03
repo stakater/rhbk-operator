@@ -50,7 +50,7 @@ epic is what makes the TEN epic safe to offer.
 
 | Story | Status |
 |---|---|
-| **FIX.1** — As an operator of the operator, I want `HasSecretReference` to tolerate substitutions without a Secret ref, so that one malformed `KeycloakImport` cannot panic the controller for the whole cluster. **Done:** nil-safe; regression test with value-only substitution; fuzz-ish table over substitution shapes. | 📝 Draft |
+| **FIX.1** — As an operator of the operator, I want `HasSecretReference` to tolerate substitutions without a Secret ref, so that one malformed `KeycloakImport` cannot panic the controller for the whole cluster. **Done:** nil-safe; regression test with value-only substitution; fuzz-ish table over substitution shapes. [Plan](planning/fix-1-substitution-nil-panic.md) · closes #11 | ✅ Done |
 
 ## Epic DX — developer experience
 
