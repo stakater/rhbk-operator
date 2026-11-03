@@ -5,10 +5,9 @@ on:
     branches:
       - main
     paths-ignore:
-      - '*.md'
-      - 'docs/'
-      - 'examples/'
-      - 'hack/'
+      - '**/*.md'
+      - 'docs/**'
+      - 'examples/**'
 
 jobs:
   push-operator:
