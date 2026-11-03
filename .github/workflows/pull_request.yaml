@@ -6,10 +6,9 @@ on:
       - main
       - release
     paths-ignore:
-      - '*.md'
-      - 'docs/'
-      - 'examples/'
-      - 'hack/'
+      - '**/*.md'
+      - 'docs/**'
+      - 'examples/**'
 
 jobs:
   operator-pull-request:
