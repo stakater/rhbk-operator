@@ -165,28 +165,47 @@ var _ = Describe("Keycloak Controller", func() {
 			Expect(HasOwnerRef(keycloak, discoverySvc)).To(BeTrue())
 		})
 
-		It("should reconcile changes", func() {
+		It("should reconcile a scale-up, scale-down and version change", func() {
 			key := client.ObjectKeyFromObject(keycloak)
 
 			By("Reconciling the keycloak resource")
 			ReconcileKeycloak(ctx, key)
 
-			err := k8sClient.Get(ctx, client.ObjectKeyFromObject(keycloak), keycloak)
-			Expect(err).NotTo(HaveOccurred())
+			statefulSet := GetKeycloakStatefulSet(ctx, keycloak)
+			originalImage := statefulSet.Spec.Template.Spec.Containers[0].Image
+			Expect(*statefulSet.Spec.Replicas).To(Equal(int32(1)))
 
-			keycloak.Spec.Instances = &[]int32{1}[0]
-			err = k8sClient.Update(ctx, keycloak)
+			By("Scaling up to 3 instances")
+			err := k8sClient.Get(ctx, key, keycloak)
 			Expect(err).NotTo(HaveOccurred())
+			keycloak.Spec.Instances = &[]int32{3}[0]
+			Expect(k8sClient.Update(ctx, keycloak)).To(Succeed())
 
 			ReconcileKeycloak(ctx, key)
+			statefulSet = GetKeycloakStatefulSet(ctx, keycloak)
+			Expect(*statefulSet.Spec.Replicas).To(Equal(int32(3)))
 
-			By("Checking Statefulset resource has been created")
-			statefulSet := &appsv1.StatefulSet{}
-			err = k8sClient.Get(ctx, client.ObjectKeyFromObject(keycloak), statefulSet)
-
+			By("Scaling back down to 1 instance")
+			err = k8sClient.Get(ctx, key, keycloak)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(statefulSet.Name).To(Equal(resourceName))
-			Expect(statefulSet.Spec.Replicas).To(Equal(keycloak.Spec.Instances))
+			keycloak.Spec.Instances = &[]int32{1}[0]
+			Expect(k8sClient.Update(ctx, keycloak)).To(Succeed())
+
+			ReconcileKeycloak(ctx, key)
+			statefulSet = GetKeycloakStatefulSet(ctx, keycloak)
+			Expect(*statefulSet.Spec.Replicas).To(Equal(int32(1)))
+
+			By("Changing the RHBK version")
+			err = k8sClient.Get(ctx, key, keycloak)
+			Expect(err).NotTo(HaveOccurred())
+			keycloak.Spec.Version = "26.0-7"
+			Expect(k8sClient.Update(ctx, keycloak)).To(Succeed())
+
+			ReconcileKeycloak(ctx, key)
+			statefulSet = GetKeycloakStatefulSet(ctx, keycloak)
+			newImage := statefulSet.Spec.Template.Spec.Containers[0].Image
+			Expect(newImage).NotTo(Equal(originalImage))
+			Expect(newImage).To(HaveSuffix(":26.0-7"))
 		})
 	})
 })
