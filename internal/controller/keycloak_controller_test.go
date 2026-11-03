@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ssov1alpha1 "github.com/stakater/rhbk-operator/api/v1alpha1"
+	"github.com/stakater/rhbk-operator/internal/resources/rhbk"
 	"github.com/stakater/rhbk-operator/test/utils"
 )
 
@@ -134,25 +135,34 @@ var _ = Describe("Keycloak Controller", func() {
 			svcName := keycloak.Name + "-svc"
 			svc := &v1.Service{}
 
-			_ = k8sClient.Get(ctx, client.ObjectKey{
+			err = k8sClient.Get(ctx, client.ObjectKey{
 				Name:      svcName,
 				Namespace: keycloak.Namespace,
 			}, svc)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(svc.Name).To(Equal(svcName))
+			Expect(svc.Annotations).To(HaveKeyWithValue(
+				"service.beta.openshift.io/serving-cert-secret-name", keycloak.Name+"-tls"))
+			Expect(svc.Spec.Ports).To(ContainElements(
+				HaveField("Port", int32(rhbk.HttpsPort)),
+				HaveField("Port", int32(rhbk.ManagementPort)),
+			))
+			Expect(HasOwnerRef(keycloak, svc)).To(BeTrue())
 
 			By("Checking discovery-svc resource has been created")
-			svcName = keycloak.Name + "-discovery"
-			svc = &v1.Service{}
+			discoverySvc := &v1.Service{}
 
-			_ = k8sClient.Get(ctx, client.ObjectKey{
-				Name:      svcName,
+			err = k8sClient.Get(ctx, client.ObjectKey{
+				Name:      keycloak.Name + "-discovery",
 				Namespace: keycloak.Namespace,
-			}, svc)
+			}, discoverySvc)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(svc.Name).To(Equal(svcName))
+			Expect(discoverySvc.Spec.ClusterIP).To(Equal(v1.ClusterIPNone))
+			Expect(discoverySvc.Spec.PublishNotReadyAddresses).To(BeTrue())
+			Expect(discoverySvc.Spec.Ports).To(ContainElement(
+				HaveField("Port", int32(rhbk.DiscoveryPort))))
+			Expect(HasOwnerRef(keycloak, discoverySvc)).To(BeTrue())
 		})
 
 		It("should reconcile changes", func() {
