@@ -321,6 +321,20 @@ spec:
                   - url
                   type: object
                 type: array
+              realmImportPolicy:
+                description: |-
+                  Policy for which namespaces may import realms into this instance via
+                  KeycloakImport. Imports from the instance's own namespace are always
+                  allowed. When unset, only same-namespace imports are allowed.
+                properties:
+                  allowedNamespaces:
+                    description: |-
+                      Namespaces allowed to import realms into this instance. "*" allows all
+                      namespaces.
+                    items:
+                      type: string
+                    type: array
+                type: object
               sizing:
                 description: Realm sizing
                 properties:

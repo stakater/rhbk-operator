@@ -21,11 +21,12 @@ var _ = Describe("RHBK", Ordered, func() {
 	var kc *utils.Keycloak
 
 	rhbkVars := map[string]interface{}{
-		"name":        "e2e-rhbk",
-		"dbUser":      "e2e",
-		"dbPassword":  "test123",
-		"adminSecret": "admin-secret",
-		"dbHost":      "e2e-rhbk",
+		"name":           "e2e-rhbk",
+		"dbUser":         "e2e",
+		"dbPassword":     "test123",
+		"adminSecret":    "admin-secret",
+		"dbHost":         "e2e-rhbk",
+		"realmNamespace": realmNs,
 	}
 
 	realmVars := map[string]interface{}{

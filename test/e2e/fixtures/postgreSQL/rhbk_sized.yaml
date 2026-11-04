@@ -4,6 +4,9 @@ metadata:
   name: {{ .name }}
 spec:
   instances: 1
+  realmImportPolicy:
+    allowedNamespaces:
+      - {{ .realmNamespace }}
   admin:
     username:
       secret:

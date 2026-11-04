@@ -34,6 +34,11 @@ spec:
       secret:
         name: rhbk-pguser-rhbk
         key: password
+#  Allow KeycloakImport CRs from other namespaces (same-namespace imports
+#  are always allowed; without this policy they are the only ones allowed):
+#  realmImportPolicy:
+#    allowedNamespaces:
+#      - team-a
 #  trustedCABundles:
 #    name: openshift-service-ca.crt
 #  providers:
