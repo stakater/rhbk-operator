@@ -84,10 +84,11 @@ A coding change is done only when:
 - Docs moved with the code: roadmap story status, planning doc, any affected
   `docs/` content.
 
-In Claude Code, the PostToolUse hook `hack/verify-hook.sh` (wired in
-`.claude/settings.json`) runs it after every edit to a Go or YAML file,
-`go.mod`, `go.sum` or the Makefile; a failure comes back as hook feedback with
-the end of the log and the full log's path.
+CI runs `make verify` as its own Verify job on every PR and push to `main`, next
+to the shared build workflow. In Claude Code, the PostToolUse hook
+`hack/verify-hook.sh` (wired in `.claude/settings.json`) runs it after every
+edit to a Go or YAML file, `go.mod`, `go.sum` or the Makefile; a failure comes
+back as hook feedback with the end of the log and the full log's path.
 
 ## Go / operator conventions
 
