@@ -10,7 +10,7 @@ the planning-doc contract — is codified in [method.md](method.md).
   with a **Done:** acceptance line. Stories are coded (`SEC.1`, `TEN.1`, …).
 - **Story lifecycle:** **📝 Draft** (written, not agreed — may be re-scoped or
   killed) → **👍 Approved** (greenlit) → **🔨 In progress** → **✅ Done** (Done
-  line met, `make test` + `make lint` green, planning doc linked). Nothing moves
+  line met, `make verify` green, planning doc linked). Nothing moves
   from Draft to In-progress without explicit approval.
 - **One story at a time**, end-to-end, then demoed — no big horizontal layers.
 - Security findings live as labeled GitHub issues; a story references the
@@ -56,5 +56,5 @@ epic is what makes the TEN epic safe to offer.
 
 | Story | Status |
 |---|---|
-| **DX.1** — As a contributor, I want a `make verify` umbrella target (fmt · vet · build · lint · test) and an edit-hook that runs it, so that "done but unverified" cannot exist. **Done:** target exists, CI uses it, hook wired in `hack/`. | 📝 Draft |
+| **DX.1** — As a contributor, I want a `make verify` umbrella target (fmt · vet · build · lint · test) and an edit-hook that runs it, so that "done but unverified" cannot exist. **Done:** target exists, CI uses it, hook wired in `hack/`. [Plan](planning/dx-1-make-verify.md) · closes #17 | ✅ Done |
 | **DX.2** — As a new user, I want the README to describe what this operator actually is (not kubebuilder scaffolding), so that teams can evaluate and adopt it. **Done:** README covers purpose, comparison to official RHBK operator, CR examples, install. | 📝 Draft |

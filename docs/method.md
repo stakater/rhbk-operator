@@ -14,7 +14,7 @@ flowchart LR
   S -->|approval gate| P[Planning doc<br/>docs/planning/ from TEMPLATE.md]
   P --> R[Red<br/>failing test first]
   R --> G[Green<br/>implement to the test]
-  G --> DoD[Verify<br/>make test + make lint, PR]
+  G --> DoD[Verify<br/>make verify, PR]
   DoD --> A[Audit<br/>security review, e2e on real cluster, operational feedback]
   A -->|defect families become stories| S
   DEC[ADRs<br/>immutable decisions] -.->|constrain| P
@@ -35,7 +35,7 @@ quality claims are grounded in those, not assumed from green CI.
 | Spec first | Spec-driven development | vision → story → planning doc **before code**, in order | workflow rule in CLAUDE.md; planning doc committed before implementation |
 | Immutable decisions | ADRs (Nygard) | `docs/adr/` — accepted ADRs are never edited, only superseded | ADR convention in CLAUDE.md; review |
 | Story-driven delivery | user stories / agile | house format + **Done:** line + lifecycle (below), one story at a time | roadmap convention; PR descriptions cite the story |
-| Test-first | TDD (Beck) | red → green → refactor; envtest for controllers, table-driven units for pure logic | review today; a `make verify` + edit-hook (as in kube-ward) is a Draft DX story — until then this relies on discipline |
+| Test-first | TDD (Beck) | red → green → refactor; envtest for controllers, table-driven units for pure logic | `make verify` (in CI, and after every Go/YAML edit via the Claude Code hook `hack/verify-hook.sh`) proves tests and lint green and generated files current; that the test came *first* is still review |
 | Domain modeling | DDD (Evans) | builders own resources, reconcilers orchestrate; CRD types are the domain language | repo-map split in CLAUDE.md; review |
 | Production evaluation | eval-driven development | security findings and operational incidents from live team instances become labeled issues → stories → fixes | GitHub issues with `security`/`severity/*` labels; roadmap SEC epic |
 | Adversarial review | multi-agent verification | `/code-review` on non-trivial PRs: independent finder angles → cross-verified findings | the review flow |
@@ -48,7 +48,7 @@ re-scoped or killed; killing a weak Draft is a success of the method, not a
 failure. → **👍 Approved** — a human said build it. The gate exists because
 comply-by-default is the failure mode: an unapproved story must never start.
 → **🔨 In progress** — one at a time, end-to-end. → **✅ Done** — the Done
-line met, tests and lint green, planning doc linked from the story.
+line met, `make verify` green, planning doc linked from the story.
 
 ## The planning doc is a context capsule
 

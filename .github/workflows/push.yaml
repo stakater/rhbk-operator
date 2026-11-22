@@ -10,6 +10,26 @@ on:
       - 'examples/**'
 
 jobs:
+  verify:
+    name: Verify
+    if: "! contains(toJSON(github.event.commits.*.message), '[skip-ci]')"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: make verify
+        run: make verify
+
   push-operator:
     name: Push Operator
     if: "! contains(toJSON(github.event.commits.*.message), '[skip-ci]')"

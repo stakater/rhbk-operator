@@ -11,6 +11,25 @@ on:
       - 'examples/**'
 
 jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: make verify
+        run: make verify
+
   operator-pull-request:
     name: Operator Pull Request
     uses: stakater/.github/.github/workflows/operator_pull_request.yaml@main

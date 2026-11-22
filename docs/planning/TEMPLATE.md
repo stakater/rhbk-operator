@@ -46,6 +46,6 @@ the honest consequence stated).>
 
 ## Done means
 
-<Restate the roadmap Done line, plus anything mechanical: make test + make
-lint green, make manifests/generate no-diff, docs updated (which ones),
+<Restate the roadmap Done line, plus anything mechanical: make verify green
+(tests, lint, manifests/generate no-diff), docs updated (which ones),
 upgrade-path note if the CRD schema changed.>
