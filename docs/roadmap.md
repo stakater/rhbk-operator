@@ -56,5 +56,5 @@ epic is what makes the TEN epic safe to offer.
 
 | Story | Status |
 |---|---|
-| **DX.1** — As a contributor, I want a `make verify` umbrella target (fmt · vet · build · lint · test) and an edit-hook that runs it, so that "done but unverified" cannot exist. **Done:** target exists, CI uses it, hook wired in `hack/`. | 📝 Draft |
+| **DX.1** — As a contributor, I want a `make verify` umbrella target (fmt · vet · build · lint · test) and an edit-hook that runs it, so that "done but unverified" cannot exist. **Done:** target exists, CI uses it, hook wired in `hack/`. [Plan](planning/dx-1-make-verify.md) · closes #17 | 🔨 In progress |
 | **DX.2** — As a new user, I want the README to describe what this operator actually is (not kubebuilder scaffolding), so that teams can evaluate and adopt it. **Done:** README covers purpose, comparison to official RHBK operator, CR examples, install. | 📝 Draft |
