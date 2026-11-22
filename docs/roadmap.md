@@ -10,7 +10,7 @@ the planning-doc contract — is codified in [method.md](method.md).
   with a **Done:** acceptance line. Stories are coded (`SEC.1`, `TEN.1`, …).
 - **Story lifecycle:** **📝 Draft** (written, not agreed — may be re-scoped or
   killed) → **👍 Approved** (greenlit) → **🔨 In progress** → **✅ Done** (Done
-  line met, `make test` + `make lint` green, planning doc linked). Nothing moves
+  line met, `make verify` green, planning doc linked). Nothing moves
   from Draft to In-progress without explicit approval.
 - **One story at a time**, end-to-end, then demoed — no big horizontal layers.
 - Security findings live as labeled GitHub issues; a story references the

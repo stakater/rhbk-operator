@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/hack/verify-hook.sh",
+            "timeout": 900,
+            "statusMessage": "make verify (DX.1)"
+          }
+        ]
+      }
+    ]
+  }
+}

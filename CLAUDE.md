@@ -48,7 +48,7 @@ for any non-trivial change:
    capsule a cold session could execute. Committed before implementation.
 4. **TDD.** Failing test first (red → green → refactor), table-driven, through
    envtest/fakes. No production code without a test that demanded it.
-5. **DoD.** `make test` and `make lint` green — output actually seen; story marked
+5. **DoD.** `make verify` green — output actually seen; story marked
    ✅ with the planning-doc link; commit + push on a feature branch, never `main`.
 
 **ADRs** (`docs/adr/`) record decisions with their rejected alternatives. Accepted
@@ -74,18 +74,20 @@ ADRs are immutable — a changed mind writes a superseding ADR.
 
 A coding change is done only when:
 
-- `make test` passes (runs manifests + generate + fmt + vet + envtest suite) and
-  `make lint` is clean — **run them, see them green**, don't claim it.
-- Generated artifacts are current: `make manifests generate` produces no diff
-  (CRD YAML under `config/crd/`, `zz_generated.deepcopy.go`).
+- `make verify` passes — **run it, see it green**, don't claim it. It fails if
+  `fmt`, `manifests` or `generate` change any file (unformatted Go, or stale CRD
+  YAML under `config/crd/`, RBAC, `zz_generated.deepcopy.go`), then runs vet,
+  build, `make lint` and `make test` (envtest suite). It uses the Go version in
+  `go.mod`, as CI does, so a newer local Go gives the same answer.
 - New/changed behavior ships with tests (controller tests via envtest; pure logic
   like sizing as plain table-driven unit tests).
 - Docs moved with the code: roadmap story status, planning doc, any affected
   `docs/` content.
 
-There is no `make verify` umbrella target or edit-hook here yet (kube-ward has
-one) — adding it is a Draft DX story in the roadmap. Until then, run the targets
-yourself.
+In Claude Code, the PostToolUse hook `hack/verify-hook.sh` (wired in
+`.claude/settings.json`) runs it after every edit to a Go or YAML file,
+`go.mod`, `go.sum` or the Makefile; a failure comes back as hook feedback with
+the end of the log and the full log's path.
 
 ## Go / operator conventions
 

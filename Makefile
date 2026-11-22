@@ -129,6 +129,26 @@ lint: golangci-lint ## Run golangci-lint linter & yamllint
 lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 	$(GOLANGCI_LINT) run --fix
 
+##@ Verify
+
+# The Go version in go.mod (CI's setup-go installs it from go-version-file),
+# as a toolchain name: "1.24" becomes "1.24.0".
+GO_MOD_VERSION := $(shell sed -n -e 's/^go \([0-9]*\.[0-9]*\)$$/\1.0/p' -e 's/^go \([0-9]*\.[0-9]*\.[0-9]*\)$$/\1/p' go.mod)
+
+# Definition of Done gate (docs/method.md, story DX.1). CI runs it, and the
+# Claude Code edit-hook (hack/verify-hook.sh) runs it after Go/YAML edits.
+# - First, fmt, manifests and generate must leave the working tree unchanged:
+#   otherwise the Go code is unformatted or the generated files are stale.
+# - It runs under the go.mod toolchain, so a newer local Go gives the CI answer.
+#   golangci-lint v1.64.2 cannot type-check under Go 1.27, and its result
+#   depends on the `go` it calls at run time, not the Go it was built with.
+#   Override on the command line: make verify GOTOOLCHAIN=local
+.PHONY: verify
+verify: export GOTOOLCHAIN = go$(GO_MOD_VERSION)+auto
+verify: ## Run fmt, manifests and generate (must leave no diff), then vet, build, lint and test.
+	hack/verify-no-diff.sh $(MAKE) fmt manifests generate
+	$(MAKE) vet build lint test
+
 ##@ Build
 
 .PHONY: build

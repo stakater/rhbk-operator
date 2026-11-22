@@ -33,7 +33,7 @@ that "done" is a claim, not a check — the gap issue #17 names.
 **`Makefile`** — new `verify` target in a `##@ Verify` section:
 
 ```make
-GO_MOD_VERSION := $(shell sed -n 's/^go //p' go.mod)
+GO_MOD_VERSION := $(shell sed ... go.mod)   # "1.23.0"; "1.24" → "1.24.0"
 
 verify: export GOTOOLCHAIN = go$(GO_MOD_VERSION)+auto
 verify: ## Definition of Done gate: ...
@@ -67,19 +67,20 @@ PostToolUse hook on `Edit|Write|MultiEdit`:
   skips gitignored files and files outside this repository (it compares
   `git rev-parse --git-common-dir`, so any worktree of this repo counts and
   `make verify` runs in the tree that holds the edited file).
-- Output goes to a temp log. Success: exit 0, log removed. Failure: exit 2
-  (the only code Claude Code feeds back to Claude for PostToolUse) with the
-  last 100 lines and the log path on stderr — full `go test -v` output would
-  flood the context.
+- Output goes to `bin/verify-hook.log` in the verified tree (gitignored, so
+  it does not trip the no-diff check; overwritten each run). Success: exit 0.
+  Failure: exit 2 (the only code Claude Code feeds back to Claude for
+  PostToolUse) with the last 100 lines and the log path on stderr — full
+  `go test -v` output would flood the context.
 - Settings: `timeout: 900` (a cold first run downloads Go 1.23, the tools and
   the envtest binaries), `statusMessage`.
 
 **CI** — `.github/workflows/pull_request.yaml` and `push.yaml`: a new `verify`
 job (checkout, `setup-go` from `go.mod`, `make verify`, `contents: read`).
-The shared job gets `needs: verify` and `ENABLE_LINTING: false`,
-`ENABLE_UNIT_TESTS: false`, so lint/test run once, and a red gate builds and
-pushes no image. The push job keeps its `[skip-ci]` condition; `verify` gets
-the same one.
+Checkout uses `persist-credentials: false` (the job runs PR code and needs
+no token). The change is additive: the shared job is not changed, keeps its
+own lint and unit-test steps, and runs in parallel. In `push.yaml`, `verify`
+gets the same `[skip-ci]` condition as the push job.
 
 **Docs** — CLAUDE.md (workflow step 5, DoD, drop the "no `make verify` yet"
 paragraph), `docs/method.md` (loop node, practices table row, lifecycle),
@@ -115,8 +116,11 @@ manual run, listed in the PR.
 
 - Upgrading golangci-lint (v2) or Go so `make lint` works on new Go without
   the pin — separate story; the pin then follows `go.mod` automatically.
-- A `VERIFY_TARGET` input on the shared `stakater/.github` workflows (would
-  remove the extra job) — cross-repo change.
+- Making the shared job `needs: verify` (no image from a red gate) and turning
+  off its own lint/unit-test steps (they then run twice) — it changes and
+  disables existing CI steps, so it is a maintainer decision, not part of
+  this story. A `VERIFY_TARGET` input on the shared `stakater/.github`
+  workflows would also remove the duplication — cross-repo change.
 - Enforcing red-first itself: the hook proves the tree is green, not that a
   test was written first; that stays review.
 - e2e in `make verify` (needs a live OpenShift cluster, #21).

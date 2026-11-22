@@ -103,6 +103,8 @@ loads providers without a custom image build. Full comparison:
 ## Developing
 
 ```sh
+make verify   # Definition of Done gate, also run by CI: fmt/manifests/generate
+              # must leave no diff, then vet, build, lint, test
 make test     # manifests, generate, fmt, vet, envtest suite
 make lint     # golangci-lint
 make install run  # CRDs + run the manager locally
